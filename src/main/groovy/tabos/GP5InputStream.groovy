@@ -326,10 +326,7 @@ class GP5InputStream extends DataInputStream {
                                         [:].tap {
                                             sharp = readBoolean()
                                             skipBytes 3 // ?
-                                            root = [
-                                                value: read(),
-                                                intonation: it.sharp ? 'sharp' : 'flat'
-                                            ]
+                                            root = new Pitch(value: read(), intonation: it.sharp ? Pitch.Intonation.SHARP : Pitch.Intonation.FLAT)
                                             type = read()
                                             extension = read()
                                             bass = readInt()
@@ -404,16 +401,16 @@ class GP5InputStream extends DataInputStream {
                                 }
                                 // mix table change
                                 if ((beatFlags & 0x10) != 0) {
-                                    def toMixTableItem = { value -> value >= 0 ? [ value: value, duration: 0, allTracks: false ] : null }
-                                    beat.effect.mixTableChange = [
+                                    Closure<MixTableItem> toMixTableItem = { int value -> value >= 0 ? new MixTableItem(value) : null }
+                                    beat.effect.mixTableChange = new MixTableChange(
                                         instrument: toMixTableItem(read()),
                                         // rse gp5
-                                        rse: [
+                                        rse: new RSEInstrument(
                                             instrument: readInt(),
                                             unknown: readInt(), // fixme ? mostly 1
                                             soundBank: readInt(),
                                             effectNumber: (version == v(5, 0, 0)) ? readShort().tap { skip 1 } : readInt(),
-                                        ].tap { if (version == v(5, 0, 0)) skipBytes 1 },
+                                        ).tap { if (version == v(5, 0, 0)) skipBytes 1 },
                                         volume: toMixTableItem(read()),
                                         balance: toMixTableItem(read()),
                                         chorus: toMixTableItem(read()),
@@ -422,7 +419,7 @@ class GP5InputStream extends DataInputStream {
                                         tremolo: toMixTableItem(read()),
                                         tempoName: readIntByteSizeString(), // gp5
                                         tempo: toMixTableItem(readInt())
-                                    ].tap { mixTableChange ->
+                                    ).tap { mixTableChange ->
                                         mixTableChange.volume?.duration = read()
                                         mixTableChange.balance?.duration = read()
                                         mixTableChange.chorus?.duration = read()
@@ -441,10 +438,10 @@ class GP5InputStream extends DataInputStream {
                                         mixTableChange.tremolo?.allTracks = (mixTableChangeFlags & 0x20) != 0
                                         // gp5 additions
                                         mixTableChange.useRSE = (mixTableChangeFlags & 0x40) != 0
-                                        mixTableChange.wah = [
+                                        mixTableChange.wah = new WahEffect(
                                             value: read(),
                                             display: (mixTableChangeFlags & 0x80) != 0
-                                        ]
+                                        )
                                         if (mixTableChange.instrument < 0) mixTableChange.rse = null
                                         // read rse effect
                                         if (version > v(5, 0, 0)) {
@@ -565,7 +562,7 @@ class GP5InputStream extends DataInputStream {
         [
             fret: read(),
             velocity: unpackVelocity(read()),
-            transition: read(), // todo enum GraceEffectTransition
+            transition: GraceEffectTransition.from(read()),
             duration: 1 << (7 - read()),
         ].tap { Map grace ->
             def graceFlags = read()
@@ -599,38 +596,21 @@ class GP5InputStream extends DataInputStream {
         slides
     }
 
-    private Map readHarmonic() {
-        def harmonicType = read()
-        if (harmonicType == 1) {
-            // natural
-            return [ type: harmonicType ]
-        } else if (harmonicType == 2) {
-            // C = 0, D = 2, E = 4, F = 5, ...
-            // b = -1, # = 1
-            // loco = 0, 8va = 1, 15ma = 2
-            // artificial
-            return [
-                type: harmonicType,
-                pitch: [
-                    semitone: read(),
+    private HarmonicEffect readHarmonic() {
+        return switch (read()) {
+            case 1 -> new NaturalHarmonic()
+            case 2 -> new ArtificialHarmonic(
+                pitch: new Pitch(
+                    just: read(),
                     accidental: read()
-                ], // todo class?
-                octave: read() // todo enum
-            ]
-        } else if (harmonicType == 3) {
-            // tapped
-            return [
-                type: harmonicType,
-                fret: read()
-            ]
-        } else if (harmonicType == 4) {
-            // pinch
-            return [ type: harmonicType ]
-        } else if (harmonicType == 5) {
-            // semi
-            return [ type: harmonicType ]
+                ),
+                octave: Octave.from(read())
+            )
+            case 3 -> new TappedHarmonic(fret: read())
+            case 4 -> new PinchHarmonic()
+            case 5 -> new SemiHarmonic()
+            default -> null
         }
-        return null
     }
 
     private Map readTrill() {
