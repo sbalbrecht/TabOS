@@ -2,6 +2,41 @@ package tabos
 
 import groovy.transform.TupleConstructor
 
+class PageSetup {
+    @TupleConstructor
+    class HeaderElement {
+        String template = ''
+        boolean visible = true
+    }
+    def dimensions = [width: 210, height: 297]
+    def margin = [left: 10, top: 15, right: 10, bottom: 10]
+    float scoreSizeProportion = 1.0
+    HeaderElement title = new HeaderElement('%title%')
+    HeaderElement subtitle = new HeaderElement('%subtitle%')
+    HeaderElement artist = new HeaderElement('%artist%')
+    HeaderElement album = new HeaderElement('%album%')
+    HeaderElement words = new HeaderElement('Words by %words%')
+    HeaderElement music = new HeaderElement('Music by %music%')
+    HeaderElement wordsAndMusic = new HeaderElement('Words & Music by %WORDSMUSIC%')
+    HeaderElement copyright1 = new HeaderElement('Copyright %copyright%')
+    HeaderElement copyright2 = new HeaderElement('All Rights Reserved - International Copyright Secured')
+    HeaderElement pageNumber = new HeaderElement('Page %N%/%P%')
+}
+
+class MidiChannel {
+    static final int DEFAULT_PERCUSSION_CHANNEL = 9
+    int channel = 0
+    int effectChannel = 1
+    int instrument = 25
+    int volume = 104
+    int balance = 64
+    int chorus = 0
+    int reverb = 0
+    int phaser = 0
+    int tremolo = 0
+    int bank = 0
+}
+
 @TupleConstructor
 class TrackSettings {
     boolean tablature = true
@@ -12,6 +47,7 @@ class TrackSettings {
     boolean forceChannels = false
     boolean diagramList = true
     boolean diagramsInScore = false
+    boolean unknown = false
     boolean autoLetRing = false
     boolean autoBrush = false
     boolean extendRhythmic = false
@@ -115,7 +151,7 @@ enum KeySignature {
     E_MINOR_SHARP(8, 1),
     final int value
     final int isMinor
-    KeySignature(int value, int isMinor) {
+    private KeySignature(int value, int isMinor) {
         this.value = value
         this.isMinor = isMinor
     }
@@ -165,6 +201,16 @@ enum Fingering {
     static from(int value) { values().find{ it.value == value } }
 }
 
+enum NoteType {
+    REST(0),
+    NORMAL(1),
+    TIE(2),
+    DEAD(3),
+    final int value
+    NoteType(int value) { this.value = value }
+    static from(int value) { values().find{ it.value == value } }
+}
+
 enum LineBreak {
     NONE(0),
     BREAK(1),
@@ -193,6 +239,98 @@ enum Octave {
     final int value
     Octave(int value) { this.value = value }
     static Octave from(int value) { values().find{ it.value == value } }
+}
+
+class Chord {
+    int length
+    Boolean sharp
+    Pitch root
+    ChordType type
+    ChordExtension extension
+    Pitch bass
+    ChordAlteration tonality
+    Boolean add
+    String name = ''
+    ChordAlteration fifth
+    ChordAlteration ninth
+    ChordAlteration eleventh
+    Integer firstFret
+    List<GuitarString> strings = []
+    List<Barre> barres = []
+    List<Boolean> omissions = []
+    List<Fingering> fingerings = []
+    Boolean show
+    Boolean newFormat
+}
+
+enum ChordType {
+    MAJOR(0),
+    SEVENTH(1),
+    MAJOR_SEVENTH(2),
+    SIXTH(3),
+    MINOR(4),
+    MINOR_SEVENTH(5),
+    MINOR_MAJOR(6),
+    MINOR_SIXTH(7),
+    SUSPENDED_SECOND(8),
+    SUSPENDED_FOURTH(9),
+    SEVENTH_SUSPENDED_SECOND(10),
+    SEVENTH_SUSPENDED_FOURTH(11),
+    DIMINISHED(12),
+    AUGMENTED(13),
+    POWER(14)
+    int value
+    ChordType(int value) { this.value = value }
+    static ChordType from(int value) { values().find { it.value == value }}
+}
+
+enum ChordAlteration {
+    PERFECT(0),
+    DIMINISHED(1),
+    AUGMENTED(2)
+    int value
+    ChordAlteration(int value) { this.value = value }
+    static ChordAlteration from(int value) { values().find { it.value == value }}
+}
+
+enum ChordExtension {
+    NONE(0),
+    NINTH(1),
+    ELEVENTH(2),
+    THIRTEENTH(3),
+    int value
+    ChordExtension(int value) { this.value = value }
+    static ChordExtension from(int value) { values().find { it.value == value }}
+}
+
+class Barre {
+    int fret
+    int start
+    int end
+}
+
+class BeatEffect {
+    BeatStroke stroke
+    boolean hasRasgueado = false
+    BeatStrokeDirection pickStroke = BeatStrokeDirection.NONE
+    Chord chord
+    boolean fadeIn = false
+    BendEffect tremoloBar
+    MixTableChange mixTableChange
+    SlapEffect slapEffect = SlapEffect.NONE
+    boolean vibrato = false
+}
+
+class BeatStroke {
+    BeatStrokeDirection direction = BeatStrokeDirection.NONE
+    int value = 0
+    def swapDirection() {
+        return switch(direction) {
+            case BeatStrokeDirection.UP -> BeatStrokeDirection.DOWN
+            case BeatStrokeDirection.DOWN -> BeatStrokeDirection.UP
+            default -> direction
+        }
+    }
 }
 
 enum BeatStatus {
@@ -236,22 +374,28 @@ class SemiHarmonic extends HarmonicEffect {
 
 class Pitch {
     enum Intonation {
-        SHARP('C C# D D# E F F# G G# A A# B'.split()),
-        FLAT('C Db D Eb E F Gb G Ab A Bb B'.split())
+        SHARP(1, 'C C# D D# E F F# G G# A A# B'.split()),
+        FLAT(-1, 'C Db D Eb E F Gb G Ab A Bb B'.split())
+        int accidental
         List<String> semitones
-        Intonation(semitones) { this.semitones = semitones }
+        Intonation(accidental, semitones) {
+            this.accidental = accidental
+            this.semitones = semitones
+        }
+        static from(int value) { values().find { it.accidental == value }}
     }
-    /** C = 0, D = 2, E = 4, F = 5, ...*/
     int just
-    /** b = -1, # = 1 */
-    int accidental
     int value
     Intonation intonation
-    PitchClass(int tone, int accidental, Intonation intonation = null) {
+    Pitch(int tone, int accidental) {
         this.just = tone % 12
-        this.accidental = accidental
         this.value = (this.just + accidental) % 12
-        this.intonation = intonation ?: (accidental == -1 ? Intonation.FLAT : Intonation.SHARP)
+        this.intonation = Intonation.from(accidental)
+    }
+    Pitch(int tone, Intonation intonation) {
+        this.just = tone % 12
+        this.intonation = intonation
+        this.value = (this.just + intonation.accidental) % 12
     }
     @Override String toString() { intonation.semitones[value] }
 }
@@ -272,6 +416,27 @@ class WahEffect {
     def isOff() { value == OFF.value }
     def isNone() { value == NONE.value }
     def isOn() { value in (0..100) }
+}
+
+/* All bend presets */
+enum BendType {
+    NONE(0),
+    /* Bends */
+    BEND(1),
+    BEND_RELEASE(2),
+    BEND_RELEASE_BEND(3),
+    PREBEND(4),
+    PREBEND_RELEASE(5),
+    /* Tremolo Bar */
+    DIP(6),
+    DIVE(7),
+    RELEASE_UP(8),
+    INVERTED_DIP(9),
+    RETURN_(10),
+    RELEASE_DOWN(11)
+    final int value
+    BendType(int value) { this.value = value }
+    static BendType from(int value) { values().find{ it.value == value }}
 }
 
 class MixTableChange {
@@ -314,3 +479,27 @@ class Velocities {
     static int defaultVelocity = forte
 }
 
+class BendPoint {
+    int position = 0
+    int value = 0
+    boolean vibrato = false
+    /**
+     * Gets the exact time when the point needs to be played (MIDI).
+     * @param duration the full duration of the effect.
+     */
+    int getTime(int duration) {
+        return (duration * position / BendEffect.MAX_POSITION) as int
+    }
+}
+
+class BendEffect {
+    BendType type = BendType.NONE
+    int value = 0
+    List<BendPoint> points = []
+    /** The note offset per bend point offset. */
+    static final int SEMITONE_LENGTH = 1
+    /** The max position of the bend points (x axis) */
+    static final int MAX_POSITION = 12
+    /** The max value of the bend points (y axis) */
+    static final int maxValue = SEMITONE_LENGTH * 12
+}
