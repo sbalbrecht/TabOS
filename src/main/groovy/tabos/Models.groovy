@@ -2,6 +2,49 @@ package tabos
 
 import groovy.transform.TupleConstructor
 
+class Song {
+    String version // todo version tuple?
+    // todo clipboard?
+    String title
+    String subtitle
+    String artist
+    String album
+    String words
+    String music
+    String wordsAndMusic
+    String copyright1
+    String copyright2
+    String tab
+    String instructions
+    List<String> notice
+    Lyrics lyrics
+    PageSetup pageSetup
+    String tempoName = 'Moderate'
+    int tempo = 120
+    boolean hideTempo = false
+    KeySignature key = KeySignature.C_MAJOR
+    List<MeasureHeader> measureHeaders = []
+    List<Track> tracks = []
+    RSEMasterEffect rseMasterEffect
+
+    private RepeatGroup currentRepeatGroup = new RepeatGroup()
+
+    MeasureHeader addMeasureHeader(MeasureHeader header) {
+        header.song = this
+        measureHeaders << header
+        if (header.isRepeatOpen || currentRepeatGroup.isClosed() && header.repeatAlternative <= 0) {
+            currentRepeatGroup = new RepeatGroup()
+        }
+        currentRepeatGroup.addMeasureheader(header)
+    }
+
+    void newMeasure() {
+        def header = new MeasureHeader()
+        measureHeaders << header
+        tracks.each {track -> track.measures << new Measure(track, header) }
+    }
+}
+
 class PageSetup {
     @TupleConstructor
     class HeaderElement {
@@ -35,6 +78,108 @@ class MidiChannel {
     int phaser = 0
     int tremolo = 0
     int bank = 0
+}
+
+
+@TupleConstructor
+class Tuplet {
+    static final def supportedTuplets = [
+        [1, 1],
+        [3, 2],
+        [5, 4],
+        [6, 4],
+        [7, 4],
+        [9, 8],
+        [10, 8],
+        [11, 8],
+        [12, 8],
+        [13, 8],
+    ]
+
+    int enters = 1
+    int times = 1
+
+    def convertTime(int time) { (time * times / enters) as int }
+
+    def isSupported() { enters <= 3 && enters >= 1 && times <= 3 && times >= 1 }
+
+    static Tuplet fromFraction(Fraction frac) {
+        new Tuplet(frac.denominator, frac.numerator)
+    }
+}
+
+@TupleConstructor
+class Duration {
+    static final int QUARTER_TIME = 960
+    static final int WHOLE = 1
+    static final int HALF = 2
+    static final int QUARTER = 4
+    static final int EIGHTH = 8
+    static final int SIXTEENTH = 16
+    static final int THIRTY_SECOND = 32
+    static final int SIXTY_FOURTH = 64
+    static final int HUNDRED_TWENTY_EIGHTH = 128
+    static final int MIN_TIME = (QUARTER_TIME * 4 / SIXTY_FOURTH * 2 / 3) as int
+
+    int value = QUARTER
+    boolean isDotted = false
+    Tuplet tuplet = new Tuplet()
+
+    def getTime() {
+        tuplet.convertTime(
+            ((QUARTER_TIME * 4 / value) as int).with {
+                isDotted ? (it + it / 2) as int : it
+            }
+        )
+    }
+
+    int getIndex() { 32 - Integer.numberOfLeadingZeros(value) - 1 }
+
+    static Duration fromTime(int time) {
+        Fraction timeFrac = new Fraction(time, QUARTER_TIME * 4)
+        def exp = (Math.log(timeFrac as double) / Math.log(2)) as int
+        int value = (int) Math.pow(2, -exp)
+        def tuplet = Tuplet.fromFraction(timeFrac * value)
+
+        if (tuplet.isSupported()) return new Duration(value, false, tuplet)
+
+        timeFrac = new Fraction(time, QUARTER_TIME * 4) * new Fraction(2, 3)
+        exp = (Math.log(timeFrac as double) / Math.log(2)) as int
+        value = Math.pow(2, -exp) as int
+        tuplet = Tuplet.fromFraction(timeFrac * value)
+
+        if (tuplet.isSupported()) new Duration(value, true, tuplet)
+
+        throw new IllegalArgumentException("Cannot represent time $time as a duration")
+    }
+}
+
+record Color(int r, int g, int b) {
+    static final Color RED = new Color(255, 255, 255)
+}
+
+class Track {
+    Song song = null
+    int number = 1
+    int fretCount = 24
+    int offset = 0
+    boolean isPercussionTrack = false
+    boolean is12StringedGuitarTrack = false
+    boolean isBanjoTrack = false
+    boolean isVisible = true
+    boolean isSolo = false
+    boolean isMute = false
+    boolean indicateTuning = false
+    String name = 'Track 1'
+    List<Measure> measures = []
+    // (1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)
+    List<GuitarString> strings = []
+    int port = 1
+    MidiChannel channel
+    Color color = Color.RED
+    TrackSettings settings
+    boolean useRSE = false
+    TrackRSE rse
 }
 
 @TupleConstructor
@@ -85,6 +230,12 @@ enum TripletFeel {
     final int value
     TripletFeel(int value) { this.value = value }
     static from(int value) { values().find{ it.value == value } }
+}
+
+class TimeSignature {
+    int numerator = 4
+    Duration denominator
+    List<Integer> beams = [2, 2, 2, 2]
 }
 
 enum Accentuation {
@@ -209,6 +360,159 @@ enum NoteType {
     final int value
     NoteType(int value) { this.value = value }
     static from(int value) { values().find{ it.value == value } }
+}
+
+class Voice {
+    Measure measure
+    List<Beat> beats = []
+    VoiceDirection direction = VoiceDirection.NONE
+    def isEmpty() { beats.isEmpty() }
+}
+
+
+
+class Beat {
+    Voice voice
+    List<Note> notes = []
+    Duration duration = new Duration()
+    String text
+    Integer start
+    BeatEffect effect = new BeatEffect()
+    Octave octave = Octave.NONE
+    BeatDisplay display = new BeatDisplay()
+    BeatStatus status = BeatStatus.EMPTY
+
+    def getStartInMeasure() {
+        start - voice.measure.start
+    }
+
+    def hasVibrato() {
+        notes.any { note -> note.effect.vibrato }
+    }
+
+    def hasHarmonic() {
+        notes.find { note -> note.effect.isHarmonic }?.effect?.harmonic
+    }
+}
+
+class BeatDisplay {
+    boolean breakBeam = false
+    boolean forceBeam = false
+    boolean beamDirection = false
+    boolean tupletBracket = true
+    boolean breakSecondary = false
+    boolean breakSecondaryTuplet = false
+}
+
+class Marker {
+    String title = 'Section'
+    Color color = Color.RED
+}
+
+class MeasureHeader {
+    Song song
+    int number
+    int start
+    boolean hasDoubleBar = false
+    KeySignature keySignature = KeySignature.C_MAJOR
+    TimeSignature timeSignature
+    Marker marker
+    boolean isRepeatOpen = false
+    int repeatAlternative = 0
+    int repeatClose = -1
+    TripletFeel tripletFeel = TripletFeel.NONE
+    String direction // todo enum?
+    String fromDirection // todo enum?
+    int length() { timeSignature.numerator + timeSignature.denominator.time }
+}
+
+class GraceEffect {
+    int duration = 32
+    int fret = 0
+    boolean isDead = false
+    boolean isOnBeat = false
+    GraceEffectTransition transition = GraceEffectTransition.NONE
+    int velocity = Velocities.defaultVelocity
+    int durationTime() { Duration.QUARTER_TIME * 4 / duration }
+}
+
+class TremoloPickingEffect {
+    Duration duration
+}
+
+class TrillEffect {
+    int fret = 0
+    Duration duration
+}
+
+
+class NoteEffect {
+    boolean accentuatedNote = false
+    BendEffect bend
+    boolean ghostNote = false
+    GraceEffect grace
+    boolean hammer = false
+    HarmonicEffect harmonic
+    boolean heavyAccentuatedNote = false
+    Fingering leftHandFinger = Fingering.OPEN
+    boolean letRing = false
+    boolean palmMute = false
+    Fingering rightHandFinger = Fingering.OPEN
+    List<SlideType> slides = []
+    boolean staccato = false
+    TremoloPickingEffect tremoloPicking
+    TrillEffect trill
+    boolean vibrato = false
+
+    boolean getIsBend() { bend != null && !bend.points.isEmpty() }
+    boolean getIsHarmonic() { harmonic != null }
+    boolean getIsGrace() { grace != null }
+    boolean getIsTrill() { trill != null }
+    boolean getIsTremoloPicking() { tremoloPicking != null }
+    boolean getIsFingering() { leftHandFinger.value > -1 || rightHandFinger.value > -1 }
+    boolean isDefault() {
+        new NoteEffect().with { it ->
+            this.leftHandFinger == it.leftHandFinger
+                && this.rightHandFinger == it.rightHandFinger
+                && this.bend == it.bend
+                && this.harmonic == it.harmonic
+                && this.grace == it.grace
+                && this.trill == it.trill
+                && this.tremoloPicking == it.tremoloPicking
+                && this.vibrato == it.vibrato
+                && this.slides == it.slides
+                && this.hammer == it.hammer
+                && this.palmMute == it.palmMute
+                && this.staccato == it.staccato
+                && this.letRing == it.letRing
+        }
+    }
+}
+
+class Note {
+    Beat beat
+    int value = 0
+    int velocity = Velocities.defaultVelocity
+    int string = 0
+    NoteEffect effect = new NoteEffect()
+    float durationPercent = 1.0f
+    boolean swapAccidentals = false
+    NoteType type = NoteType.REST
+
+    def getRealValue() {
+        value + beat.voice.measure.track.strings[string - 1].value()
+    }
+}
+
+@TupleConstructor
+class Measure {
+    static final int MAX_VOICES = 2
+    Track track
+    MeasureHeader header
+    MeasureClef clef = MeasureClef.TREBLE
+    List<Voice> voices
+    LineBreak lineBreak = LineBreak.NONE
+    boolean isEmpty() { return voices.every { voice -> voice.isEmpty }}
 }
 
 enum LineBreak {
@@ -466,17 +770,17 @@ enum GraceEffectTransition {
 }
 
 class Velocities {
-    static int minVelocity = 15
-    static int velocityIncrement = 16
-    static int pianoPianissimo = minVelocity
-    static int pianissimo = minVelocity + velocityIncrement
-    static int piano = minVelocity + velocityIncrement * 2
-    static int mezzoPiano = minVelocity + velocityIncrement * 3
-    static int mezzoForte = minVelocity + velocityIncrement * 4
-    static int forte = minVelocity + velocityIncrement * 5
-    static int fortissimo = minVelocity + velocityIncrement * 6
-    static int forteFortissimo = minVelocity + velocityIncrement * 7
-    static int defaultVelocity = forte
+    static final int minVelocity = 15
+    static final int velocityIncrement = 16
+    static final int pianoPianissimo = minVelocity
+    static final int pianissimo = minVelocity + velocityIncrement
+    static final int piano = minVelocity + velocityIncrement * 2
+    static final int mezzoPiano = minVelocity + velocityIncrement * 3
+    static final int mezzoForte = minVelocity + velocityIncrement * 4
+    static final int forte = minVelocity + velocityIncrement * 5
+    static final int fortissimo = minVelocity + velocityIncrement * 6
+    static final int forteFortissimo = minVelocity + velocityIncrement * 7
+    static final int defaultVelocity = forte
 }
 
 class BendPoint {
