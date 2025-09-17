@@ -425,54 +425,51 @@ class GP5InputStream extends DataInputStream {
                             }
 
                             // read notes
-                            def stringFlags = read()
-                            notes = []
-                            for (def string : track.strings) {
-                                if (stringFlags & 1 << (7 - string.number())) {
-                                    Note note = new Note()
-                                    note.beat = beat
-                                    note.string = string.number()
-                                    note.effect = new NoteEffect()
-                                    note.effect.heavyAccentuatedNote = bool(stringFlags & 0x02)
-                                    note.effect.ghostNote = bool(stringFlags & 0x04)
-                                    note.effect.accentuatedNote = bool(stringFlags & 0x40)
-                                    note.type = bool(stringFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
-                                    note.velocity = bool(stringFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
-                                    if (bool(stringFlags & 0x20)) {
-                                        int fret = read()
-                                        int value = (note.type == NoteType.TIE) ? getTiedNoteValue(note) : fret
-                                        note.value = value in (0..<100) ? value : 0
-                                    }
-                                    note.effect.leftHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
-                                    note.effect.rightHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
-                                    note.durationPercent = bool(stringFlags & 0x01) ? readDouble() : 1.0
-                                    note.swapAccidentals = bool(read() & 0x02)
-                                    def noteEffectFlags = readShort()
-                                    note.effect.hammer = bool(noteEffectFlags & 0x0002)
-                                    note.effect.letRing = bool(noteEffectFlags & 0x0008)
-                                    note.effect.staccato = bool(noteEffectFlags & 0x0100)
-                                    note.effect.palmMute = bool(noteEffectFlags & 0x0200)
-                                    note.effect.vibrato = bool(noteEffectFlags & 0x4000)
-                                    note.effect.bend = bool(noteEffectFlags & 0x0001) ? readBend() : null
-                                    note.effect.grace = bool(noteEffectFlags & 0x0010) ? readGrace() : null
-                                    note.effect.tremoloPicking = bool(noteEffectFlags & 0x0400) ? readTremoloPicking() : null
-                                    note.effect.slides = bool(noteEffectFlags & 0x0800) ? readSlides() : []
-                                    note.effect.harmonic = bool(noteEffectFlags & 0x1000) ? readHarmonic() : null
-                                    note.effect.trill = bool(noteEffectFlags & 0x2000) ? readTrill() : null
-                                    notes << note
+                            final int stringFlags = read()
+                            notes = track.strings.findAll {
+                                stringFlags & 1 << (7 - it.number())
+                            }.collect { string -> new Note().tap { note ->
+                                note.beat = beat
+                                note.string = string.number()
+                                effect = new NoteEffect()
+                                effect.heavyAccentuatedNote = bool(stringFlags & 0x02)
+                                effect.ghostNote = bool(stringFlags & 0x04)
+                                effect.accentuatedNote = bool(stringFlags & 0x40)
+                                type = bool(stringFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
+                                velocity = bool(stringFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
+                                if (bool(stringFlags & 0x20)) {
+                                    int fret = read()
+                                    int value = (note.type == NoteType.TIE) ? getTiedNoteValue(note) : fret
+                                    note.value = value in (0..<100) ? value : 0
                                 }
-                            }
+                                effect.leftHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
+                                effect.rightHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
+                                durationPercent = bool(stringFlags & 0x01) ? readDouble() : 1.0
+                                swapAccidentals = bool(read() & 0x02)
+                                def noteEffectFlags = readShort()
+                                effect.hammer = bool(noteEffectFlags & 0x0002)
+                                effect.letRing = bool(noteEffectFlags & 0x0008)
+                                effect.staccato = bool(noteEffectFlags & 0x0100)
+                                effect.palmMute = bool(noteEffectFlags & 0x0200)
+                                effect.vibrato = bool(noteEffectFlags & 0x4000)
+                                effect.bend = bool(noteEffectFlags & 0x0001) ? readBend() : null
+                                effect.grace = bool(noteEffectFlags & 0x0010) ? readGrace() : null
+                                effect.tremoloPicking = bool(noteEffectFlags & 0x0400) ? readTremoloPicking() : null
+                                effect.slides = bool(noteEffectFlags & 0x0800) ? readSlides() : []
+                                effect.harmonic = bool(noteEffectFlags & 0x1000) ? readHarmonic() : null
+                                effect.trill = bool(noteEffectFlags & 0x2000) ? readTrill() : null
+                            }}
 
                             // gp5 additions
                             // beat = getBeat(voice, start)
                             short gp5beatFlags = readShort()
-                            octave = {
-                                if (bool(gp5beatFlags & 0x0010)) Octave.OTTAVA
-                                else if (bool(gp5beatFlags & 0x0020)) Octave.OTTAVA_BASSA
-                                else if (bool(gp5beatFlags & 0x0040)) Octave.OTTAVA_BASSA
-                                else if (bool(gp5beatFlags & 0x0100)) Octave.OTTAVA_BASSA
-                                else Octave.NONE
-                            }()
+                            octave = switch (true) {
+                                case bool(gp5beatFlags & 0x0010) -> Octave.OTTAVA
+                                case bool(gp5beatFlags & 0x0020) -> Octave.OTTAVA_BASSA
+                                case bool(gp5beatFlags & 0x0040) -> Octave.OTTAVA_BASSA
+                                case bool(gp5beatFlags & 0x0100) -> Octave.OTTAVA_BASSA
+                                default -> Octave.NONE
+                            }
                             display.breakBeam = bool(gp5beatFlags & 0x0001)
                             display.forceBeam = bool(gp5beatFlags & 0x0004)
                             display.forceBracket = bool(gp5beatFlags & 0x2000)
