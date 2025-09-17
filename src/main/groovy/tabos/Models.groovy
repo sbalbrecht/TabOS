@@ -490,7 +490,7 @@ class MeasureHeader {
     TripletFeel tripletFeel = TripletFeel.NONE
     String direction // todo enum?
     String fromDirection // todo enum?
-    int length() { timeSignature.numerator + timeSignature.denominator.time }
+    int length() { timeSignature.numerator * timeSignature.denominator.time }
 }
 
 @TupleConstructor

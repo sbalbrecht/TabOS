@@ -94,27 +94,27 @@ class GP5InputStream extends DataInputStream {
 
         def directions = [
             signs: [
-                coda: readShort(),
-                doubleCoda: readShort(),
-                segno: readShort(),
-                segnoSegno: readShort(),
-                fine: readShort()
+                'Coda': readShort(),
+                'Double Coda': readShort(),
+                'Segno': readShort(),
+                'Segno Segno': readShort(),
+                'Fine': readShort()
             ].groupBy { it.value },
             fromSigns: [
-                daCapo: readShort(),
-                daCapoAlCoda: readShort(),
-                daCapoAlDoubleCoda: readShort(),
-                daCapoAlFine: readShort(),
-                daSegno: readShort(),
-                daSegnoAlCoda: readShort(),
-                daSegnoAlDoubleCoda: readShort(),
-                daSegnoAlFine: readShort(),
-                daSegnoSegno: readShort(),
-                daSegnoSegnoAlCoda: readShort(),
-                daSegnoSegnoAlDoubleCoda: readShort(),
-                daSegnoSegnoAlFine: readShort(),
-                daCoda: readShort(),
-                daDoubleCoda: readShort()
+                'da Capo': readShort(),
+                'da Capo al Coda': readShort(),
+                'da Capo al Double Coda': readShort(),
+                'da Capo al Fine': readShort(),
+                'da Segno': readShort(),
+                'da Segno al Coda': readShort(),
+                'da Segno al Double Coda': readShort(),
+                'da Segno al Fine': readShort(),
+                'da Segno Segno': readShort(),
+                'da Segno Segno al Coda': readShort(),
+                'da Segno Segno al Double Coda': readShort(),
+                'da Segno Segno al Fine': readShort(),
+                'da Coda': readShort(),
+                'da Double Coda': readShort()
             ].groupBy { it.value }
         ]
 
@@ -133,7 +133,7 @@ class GP5InputStream extends DataInputStream {
             new MeasureHeader().tap { measureHeader ->
                 final int flags = readUnsignedByte()
                 number = i + 1
-                start = Duration.QUARTER_TIME
+                start = 0
                 isRepeatOpen = bool(flags & 0x04)
                 hasDoubleBar = bool(flags & 0x80)
                 timeSignature = new TimeSignature(
@@ -342,62 +342,57 @@ class GP5InputStream extends DataInputStream {
                                 effect.hasRasgueado = bool(beatEffectFlags & 0x100)
                                 effect.pickStroke = bool(beatEffectFlags & 0x200) ? BeatStrokeDirection.from(read()) : BeatStrokeDirection.NONE
                             }
-                            // mix table change
-                            if ((beatFlags & 0x10) != 0) {
+                            beat.effect.mixTableChange = bool(beatFlags & 0x10) ? new MixTableChange().tap {
+                                instrument = toMixTableItem(read())
+                                rse = new RSEInstrument(
+                                    instrument: readInt(),
+                                    unknown: readInt(), // fixme ? mostly 1
+                                    soundBank: readInt(),
+                                    effectNumber: (version == v(5, 0, 0)) ? readShort().tap { skip 1 } : readInt(),
+                                ).tap { if (version == v(5, 0, 0)) skipBytes 1 }
                                 Closure<MixTableItem> toMixTableItem = { int value -> value >= 0 ? new MixTableItem(value) : null }
-                                beat.effect.mixTableChange = new MixTableChange(
-                                    instrument: toMixTableItem(read()),
-                                    // rse gp5
-                                    rse: new RSEInstrument(
-                                        instrument: readInt(),
-                                        unknown: readInt(), // fixme ? mostly 1
-                                        soundBank: readInt(),
-                                        effectNumber: (version == v(5, 0, 0)) ? readShort().tap { skip 1 } : readInt(),
-                                    ).tap { if (version == v(5, 0, 0)) skipBytes 1 },
-                                    volume: toMixTableItem(read()),
-                                    balance: toMixTableItem(read()),
-                                    chorus: toMixTableItem(read()),
-                                    reverb: toMixTableItem(read()),
-                                    phaser: toMixTableItem(read()),
-                                    tremolo: toMixTableItem(read()),
-                                    tempoName: readIntByteSizeString(), // gp5
-                                    tempo: toMixTableItem(readInt())
-                                ).tap {
-                                    volume?.duration = read()
-                                    balance?.duration = read()
-                                    chorus?.duration = read()
-                                    reverb?.duration = read()
-                                    phaser?.duration = read()
-                                    tremolo?.duration = read()
-                                    tempo?.duration = read()
-                                    hideTempo = !tempo && version > v(5, 0, 0) && readBoolean()
-                                    // gp4 additions
-                                    def mixTableChangeFlags = read()
-                                    volume?.allTracks = bool(mixTableChangeFlags & 0x01)
-                                    balance?.allTracks = bool(mixTableChangeFlags & 0x02)
-                                    chorus?.allTracks = bool(mixTableChangeFlags & 0x04)
-                                    reverb?.allTracks = bool(mixTableChangeFlags & 0x08)
-                                    phaser?.allTracks = bool(mixTableChangeFlags & 0x10)
-                                    tremolo?.allTracks = bool(mixTableChangeFlags & 0x20)
-                                    // gp5 additions
-                                    useRSE = (mixTableChangeFlags & 0x40) != 0
-                                    wah = new WahEffect(
-                                        value: read(),
-                                        display: (mixTableChangeFlags & 0x80) != 0
-                                    )
-                                    if (instrument < 0) rse = null
-                                    // read rse effect
-                                    if (version > v(5, 0, 0)) {
-                                        def effect = readIntByteSizeString()
-                                        def effectCategory = readIntByteSizeString()
-                                        if (rse) {
-                                            rse.effect = effect
-                                            rse.effectCategory = effectCategory
-                                        }
+                                volume = toMixTableItem(read())
+                                balance = toMixTableItem(read())
+                                chorus = toMixTableItem(read())
+                                reverb = toMixTableItem(read())
+                                phaser = toMixTableItem(read())
+                                tremolo = toMixTableItem(read())
+                                tempoName = readIntByteSizeString() // gp5
+                                tempo = toMixTableItem(readInt())
+                                volume?.duration = read()
+                                balance?.duration = read()
+                                chorus?.duration = read()
+                                reverb?.duration = read()
+                                phaser?.duration = read()
+                                tremolo?.duration = read()
+                                tempo?.duration = read()
+                                hideTempo = !tempo && version > v(5, 0, 0) && readBoolean()
+                                // gp4 additions
+                                def mixTableChangeFlags = read()
+                                volume?.allTracks = bool(mixTableChangeFlags & 0x01)
+                                balance?.allTracks = bool(mixTableChangeFlags & 0x02)
+                                chorus?.allTracks = bool(mixTableChangeFlags & 0x04)
+                                reverb?.allTracks = bool(mixTableChangeFlags & 0x08)
+                                phaser?.allTracks = bool(mixTableChangeFlags & 0x10)
+                                tremolo?.allTracks = bool(mixTableChangeFlags & 0x20)
+                                // gp5 additions
+                                useRSE = bool(mixTableChangeFlags & 0x40)
+                                wah = new WahEffect(
+                                    value: read(),
+                                    display: bool(mixTableChangeFlags & 0x80)
+                                )
+                                if (instrument < 0) rse = null
+                                // read rse effect
+                                if (version > v(5, 0, 0)) {
+                                    def effect = readIntByteSizeString()
+                                    def effectCategory = readIntByteSizeString()
+                                    if (rse) {
+                                        rse.effect = effect
+                                        rse.effectCategory = effectCategory
                                     }
-                                    it
                                 }
-                            }
+                                it
+                            } : null
 
                             // read notes
                             final int stringFlags = read()
@@ -456,6 +451,7 @@ class GP5InputStream extends DataInputStream {
                     }}
                 }
             }
+            start += header.length()
         }
 
         close()
