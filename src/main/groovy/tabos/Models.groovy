@@ -2,6 +2,15 @@ package tabos
 
 import groovy.transform.TupleConstructor
 
+/*
+Song
+  Tracks
+    Measures
+      Voices
+        Beats
+          Notes
+ */
+
 class Song {
     String version // todo version tuple?
     // todo clipboard?
@@ -9,12 +18,10 @@ class Song {
     String subtitle
     String artist
     String album
-    String words
-    String music
-    String wordsAndMusic
-    String copyright1
-    String copyright2
-    String tab
+    String wordsAuthor
+    String musicAuthor
+    String copyright
+    String tabAuthor
     String instructions
     List<String> notice
     Lyrics lyrics
@@ -45,12 +52,13 @@ class Song {
     }
 }
 
+@TupleConstructor
+class HeaderElement {
+    String template = ''
+    boolean visible = true
+}
+
 class PageSetup {
-    @TupleConstructor
-    class HeaderElement {
-        String template = ''
-        boolean visible = true
-    }
     def dimensions = [width: 210, height: 297]
     def margin = [left: 10, top: 15, right: 10, bottom: 10]
     float scoreSizeProportion = 1.0
@@ -66,6 +74,20 @@ class PageSetup {
     HeaderElement pageNumber = new HeaderElement('Page %N%/%P%')
 }
 
+@TupleConstructor
+class LyricLine {
+    int startingMeasure = 1
+    String line = ''
+}
+
+@TupleConstructor
+class Lyrics {
+    static final int MAX_LINES = 5
+    int lyricTrackIndex = 0
+    List<LyricLine> lines = []
+}
+
+@TupleConstructor
 class MidiChannel {
     static final int DEFAULT_PERCUSSION_CHANNEL = 9
     int channel = 0
@@ -80,6 +102,31 @@ class MidiChannel {
     int bank = 0
 }
 
+@TupleConstructor
+class RSEMasterEffect {
+    float volume
+    float reverb
+    RSEEqualizer equalizer
+}
+
+class RepeatGroup {
+    List<MeasureHeader> headers = []
+    List<MeasureHeader> openings = []
+    List<MeasureHeader> closings = []
+    boolean isClosed = false
+    void addMeasureHeader(MeasureHeader header) {
+        if (!openings) openings << header
+        headers << header
+        header.repeatGroup = this
+        if (header.repeatClose > 0) {
+            closings << header
+            isClosed = true
+        } else if (isClosed) {
+            openings << header
+            isClosed = false
+        }
+    }
+}
 
 @TupleConstructor
 class Tuplet {
@@ -175,7 +222,7 @@ class Track {
     // (1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)
     List<GuitarString> strings = []
     int port = 1
-    MidiChannel channel
+    MidiChannel channel = null
     Color color = Color.RED
     TrackSettings settings
     boolean useRSE = false
@@ -198,19 +245,24 @@ class TrackSettings {
     boolean extendRhythmic = false
 }
 
-@TupleConstructor
 class RSEEqualizer {
-    List<Float> knobs = []
+    // 10 band eq: 32, 60, 125, 250, 500, 1k, 2k, 4k, 8k, 16k, PRE
+    List<Float> knobs = [0.0] * 10
     Float gain = 0.0f
+    RSEEqualizer(List<Float> values) {
+        knobs = values[0..<-1]
+        gain = values[-1]
+    }
 }
 
+@TupleConstructor
 class RSEInstrument {
     int instrument = -1
     int unknown = -1
     int soundBank = -1
     int effectNumber = -1
-    String effectCategory = ''
     String effect = ''
+    String effectCategory = ''
 }
 
 class TrackRSE {
@@ -218,9 +270,6 @@ class TrackRSE {
     RSEEqualizer equalizer
     int humanize = 0
     Accentuation autoAccentuation = Accentuation.NONE
-//    def __attrs_post_init__(self)
-//        if not self. equalizer.knobs:
-//        self.equalizer.knobs = [ 0.0 ] * 3
 }
 
 enum TripletFeel {
@@ -330,6 +379,7 @@ enum SlapEffect {
 
 enum SlideType {
     INTO_FROM_ABOVE(-2),
+    INTO_FROM_BELOW(-1),
     NONE(0),
     SHIFT_SLIDE_TO(1),
     LEGATO_SLIDE_TO(2),
@@ -395,11 +445,21 @@ class Beat {
     }
 }
 
+enum TupletBracket {
+    NONE(0),
+    START(1),
+    END(2)
+    final int value
+    TupletBracket(int value) { this.value = value }
+    static from(int value) { values().find{ it.value == value } }
+}
+
 class BeatDisplay {
     boolean breakBeam = false
     boolean forceBeam = false
     boolean beamDirection = false
-    boolean tupletBracket = true
+    boolean tupletBracket = false
+    boolean forceBracket = false
     boolean breakSecondary = false
     boolean breakSecondaryTuplet = false
 }
@@ -409,8 +469,10 @@ class Marker {
     Color color = Color.RED
 }
 
+@TupleConstructor
 class MeasureHeader {
     Song song
+    RepeatGroup repeatGroup // fixme is this right
     int number
     int start
     boolean hasDoubleBar = false
@@ -426,6 +488,7 @@ class MeasureHeader {
     int length() { timeSignature.numerator + timeSignature.denominator.time }
 }
 
+@TupleConstructor
 class GraceEffect {
     int duration = 32
     int fret = 0
@@ -495,13 +558,10 @@ class Note {
     int velocity = Velocities.defaultVelocity
     int string = 0
     NoteEffect effect = new NoteEffect()
-    float durationPercent = 1.0f
+    double durationPercent = 1.0f
     boolean swapAccidentals = false
     NoteType type = NoteType.REST
-
-    def getRealValue() {
-        value + beat.voice.measure.track.strings[string - 1].value()
-    }
+    int getRealValue() { value + beat.voice.measure.track.strings[string - 1].value() }
 }
 
 @TupleConstructor
@@ -543,28 +603,6 @@ enum Octave {
     final int value
     Octave(int value) { this.value = value }
     static Octave from(int value) { values().find{ it.value == value } }
-}
-
-class Chord {
-    int length
-    Boolean sharp
-    Pitch root
-    ChordType type
-    ChordExtension extension
-    Pitch bass
-    ChordAlteration tonality
-    Boolean add
-    String name = ''
-    ChordAlteration fifth
-    ChordAlteration ninth
-    ChordAlteration eleventh
-    Integer firstFret
-    List<GuitarString> strings = []
-    List<Barre> barres = []
-    List<Boolean> omissions = []
-    List<Fingering> fingerings = []
-    Boolean show
-    Boolean newFormat
 }
 
 enum ChordType {
@@ -611,6 +649,28 @@ class Barre {
     int fret
     int start
     int end
+}
+
+class Chord {
+    int length
+    Boolean sharp
+    Pitch root
+    ChordType type
+    ChordExtension extension
+    Pitch bass
+    ChordAlteration tonality
+    Boolean add
+    String name = ''
+    ChordAlteration fifth
+    ChordAlteration ninth
+    ChordAlteration eleventh
+    Integer firstFret
+    List<GuitarString> strings = []
+    List<Barre> barres = []
+    List<Boolean> omissions = []
+    List<Fingering> fingerings = []
+    Boolean show
+    Boolean newFormat
 }
 
 class BeatEffect {
@@ -783,6 +843,7 @@ class Velocities {
     static final int defaultVelocity = forte
 }
 
+@TupleConstructor
 class BendPoint {
     int position = 0
     int value = 0
@@ -805,5 +866,5 @@ class BendEffect {
     /** The max position of the bend points (x axis) */
     static final int MAX_POSITION = 12
     /** The max value of the bend points (y axis) */
-    static final int maxValue = SEMITONE_LENGTH * 12
+    static final int MAX_VALUE = SEMITONE_LENGTH * 12
 }
