@@ -136,10 +136,10 @@ class GP5InputStream extends DataInputStream {
                 start = Duration.QUARTER_TIME
                 isRepeatOpen = bool(flags & 0x04)
                 hasDoubleBar = bool(flags & 0x80)
-                timeSignature = new TimeSignature().tap {
-                    numerator = (bool(flags & 0x01)) ? read() : prevHeader.timeSignature.numerator
-                    denominator = (bool(flags & 0x02)) ? new Duration(read()) : prevHeader.timeSignature.denominator
-                }
+                timeSignature = new TimeSignature(
+                    numerator: (bool(flags & 0x01)) ? read() : prevHeader.timeSignature.numerator,
+                    denominator: (bool(flags & 0x02)) ? new Duration(read()) : prevHeader.timeSignature.denominator
+                )
                 repeatClose = (bool(flags & 0x08) ? read() : -1).with { it > -1 ? it - 1 : it}
                 marker = bool(flags & 0x20) ? new Marker(
                     title: readIntByteSizeString(),
@@ -165,28 +165,27 @@ class GP5InputStream extends DataInputStream {
 
         song.tracks = (1..numTracks).collect { trackNumber ->
             if (trackNumber == 1 || version == v(5, 0, 0)) skipBytes(1) // probably some data
-            read().with { flags -> new Track(
-                song: song,
-                number: trackNumber,
-                isPercussionTrack: bool(flags & 0x01),
-                is12StringedGuitarTrack: bool(flags & 0x02),
-                isBanjoTrack: bool(flags & 0x04),
-                isVisible: bool(flags & 0x08),
-                isSolo: bool(flags & 0x10),
-                isMute: bool(flags & 0x20),
-                useRSE: bool(flags & 0x40),
-                indicateTuning: bool(flags & 0x80),
-                name: readByteSizeString(40),
-                strings: readInt().with { stringCount ->
+            read().with { flags -> new Track().tap { track ->
+                track.song = song
+                number = trackNumber
+                isPercussionTrack = bool(flags & 0x01)
+                is12StringedGuitarTrack = bool(flags & 0x02)
+                isBanjoTrack = bool(flags & 0x04)
+                isVisible = bool(flags & 0x08)
+                isSolo = bool(flags & 0x10)
+                isMute = bool(flags & 0x20)
+                useRSE = bool(flags & 0x40)
+                indicateTuning = bool(flags & 0x80)
+                name = readByteSizeString(40)
+                strings = readInt().with { stringCount ->
                     (0..<7).collect {
                         readInt()
                     }.indexed().collect { i, tuning -> new GuitarString(
                         number: i + 1,
                         tuning: tuning
                     )}[0..<stringCount]
-                },
-                port: readInt(),
-            ).tap {
+                }
+                port = readInt()
                 final int index = readInt() - 1
                 final int effectChannel = readInt() - 1
                 if (index in (0..<midiChannels.size())) {
@@ -238,7 +237,7 @@ class GP5InputStream extends DataInputStream {
                     rse.instrument.effect = (version < v(5, 1, 0)) ? null : readIntByteSizeString()
                     rse.instrument.effectCategory = (version < v(5, 1, 0)) ? null : readIntByteSizeString()
                 }
-                it
+                track
             }}
         }
 

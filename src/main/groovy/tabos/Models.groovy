@@ -462,7 +462,7 @@ class BeatDisplay {
 }
 
 @AutoClone
-
+@TupleConstructor
 class TimeSignature {
     int numerator = 4
     Duration denominator = new Duration()
