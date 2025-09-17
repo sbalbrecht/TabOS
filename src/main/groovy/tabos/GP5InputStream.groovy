@@ -99,7 +99,7 @@ class GP5InputStream extends DataInputStream {
                 segno: readShort(),
                 segnoSegno: readShort(),
                 fine: readShort()
-            ],
+            ].groupBy { it.value },
             fromSigns: [
                 daCapo: readShort(),
                 daCapoAlCoda: readShort(),
@@ -115,7 +115,7 @@ class GP5InputStream extends DataInputStream {
                 daSegnoSegnoAlFine: readShort(),
                 daCoda: readShort(),
                 daDoubleCoda: readShort()
-            ]
+            ].groupBy { it.value }
         ]
 
         if (song.rseMasterEffect) {
@@ -124,67 +124,43 @@ class GP5InputStream extends DataInputStream {
             skipBytes 4
         }
 
-        int numMeasures = readInt()
-        int numTracks = readInt()
+        final int numMeasures = readInt()
+        final int numTracks = readInt()
 
-        // fixme keySignatures[] and timeSignature work weird
-        //   each header should have a keySignature instead of making this separate array
-        //   timeSig is adjusted and cloned for each measure, evolving over the course of the score. keySigs works similarly
-        KeySignature[] keySignatures = (new KeySignature[numMeasures]).tap { it ->
-            if (numMeasures > 0) it[0] = song.key
-            it
-        }
-
-        def timeSignature = new TimeSignature()
-        def measureHeaders = (0..<numMeasures).collect { i ->
+        MeasureHeader prevHeader = null
+        song.measureHeaders = (0..<numMeasures).collect { i ->
             if (i > 0) skipBytes 1
-            readUnsignedByte().with { flags -> new MeasureHeader(
-                number: i + 1,
-//                preciseStart: null,
-                start: Duration.QUARTER_TIME,
-//                tempo: [ quarterValue: 120 ],
-                isRepeatOpen: bool(flags & 0x04),
-                // fixme test changing timeSignature
-                timeSignature: (timeSignature.clone() as TimeSignature).with {  ts ->
-                    if (bool(flags & 0x01)) ts.numerator = read()
-                    // fixme fromTime correct?
-                    if (bool(flags & 0x02)) ts.denominator = Duration.fromTime(read())
-                    ts
-                },
-                // fixme check: if > -1 then x - 1,
-                repeatClose: bool(flags & 0x08) ? (read() & 0xff) : 0,
-                marker: bool(flags & 0x20) ? new Marker(
+            new MeasureHeader().tap { measureHeader ->
+                final int flags = readUnsignedByte()
+                number = i + 1
+                start = Duration.QUARTER_TIME
+                isRepeatOpen = bool(flags & 0x04)
+                hasDoubleBar = bool(flags & 0x80)
+                timeSignature = new TimeSignature().tap {
+                    numerator = (bool(flags & 0x01)) ? read() : prevHeader.timeSignature.numerator
+                    denominator = (bool(flags & 0x02)) ? new Duration(read()) : prevHeader.timeSignature.denominator
+                }
+                repeatClose = (bool(flags & 0x08) ? read() : -1).with { it > -1 ? it - 1 : it}
+                marker = bool(flags & 0x20) ? new Marker(
                     title: readIntByteSizeString(),
                     color: new Color(
                         r: readUnsignedByte(),
                         g: readUnsignedByte(),
                         b: readUnsignedByte()
                     ).tap { skipBytes 1 }
-                ) : null,
-                hasDoubleBar: bool(flags & 0x80)
-            ).tap { MeasureHeader measureHeader ->
-                if (bool(flags & 0x40)) {
-                    keySignatures[i] = KeySignature.from(read(), read())
-                } else if (i > 0) {
-                    keySignatures[i] = keySignatures[i - 1]
-                }
+                ) : null
+                keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature
+                repeatAlternative = read().with { bool(flags & 0x10) ? it : null }
+                timeSignature.beams = (bool(flags & 0x01) || bool(flags & 0x02)) ? (0..<4).collect { read() } : prevHeader.timeSignature.beams
+                if ((flags & 0x10) == 0) skipBytes 1
+                tripletFeel = TripletFeel.from(read())
 
-                if (bool(flags & 0x01) || bool(flags & 0x02)) {
-                    measureHeader.timeSignature.beams = (new byte[4]).tap { read(it) }
-                } else {
-                    // todo set to previous header's beams
-//                    measureHeader.timeSignature.beams = //...
-                }
+                // gp5
+                direction = directions.signs[i] ?: null
+                fromDirection = directions.fromSigns[i] ?: null
 
-                if (bool(flags & 0x10)) {
-                    // https://github.com/Perlence/PyGuitarPro/blob/master/src/guitarpro/gp3.py#L237-L244
-                    measureHeader.repeatAlternative = read()
-                } else {
-                    skipBytes 1
-                }
-
-                measureHeader.tripletFeel = TripletFeel.from(read())
-            }}
+                prevHeader = measureHeader
+            }
         }
 
         song.tracks = (1..numTracks).collect { trackNumber ->
@@ -270,8 +246,8 @@ class GP5InputStream extends DataInputStream {
 
         def start = Duration.QUARTER_TIME
         // measures
-        for (def header : measureHeaders) {
-            header.start = start
+        for (def header : song.measureHeaders) {
+            header.start = start // fixme keep track of start?
             for (def track : song.tracks) {
                 track.measures << new Measure().tap { measure ->
                     // start: start, fixme?

@@ -1,5 +1,6 @@
 package tabos
 
+import groovy.transform.AutoClone
 import groovy.transform.TupleConstructor
 
 /*
@@ -39,7 +40,7 @@ class Song {
     MeasureHeader addMeasureHeader(MeasureHeader header) {
         header.song = this
         measureHeaders << header
-        if (header.isRepeatOpen || currentRepeatGroup.isClosed() && header.repeatAlternative <= 0) {
+        if (header.isRepeatOpen || currentRepeatGroup.isClosed && header.repeatAlternative <= 0) {
             currentRepeatGroup = new RepeatGroup()
         }
         currentRepeatGroup.addMeasureheader(header)
@@ -114,7 +115,7 @@ class RepeatGroup {
     List<MeasureHeader> openings = []
     List<MeasureHeader> closings = []
     boolean isClosed = false
-    void addMeasureHeader(MeasureHeader header) {
+    MeasureHeader addMeasureHeader(MeasureHeader header) {
         if (!openings) openings << header
         headers << header
         header.repeatGroup = this
@@ -125,6 +126,7 @@ class RepeatGroup {
             openings << header
             isClosed = false
         }
+        header
     }
 }
 
@@ -155,6 +157,7 @@ class Tuplet {
     }
 }
 
+@AutoClone
 @TupleConstructor
 class Duration {
     static final int QUARTER_TIME = 960
@@ -279,12 +282,6 @@ enum TripletFeel {
     final int value
     TripletFeel(int value) { this.value = value }
     static from(int value) { values().find{ it.value == value } }
-}
-
-class TimeSignature {
-    int numerator = 4
-    Duration denominator
-    List<Integer> beams = [2, 2, 2, 2]
 }
 
 enum Accentuation {
@@ -462,6 +459,14 @@ class BeatDisplay {
     boolean forceBracket = false
     boolean breakSecondary = false
     boolean breakSecondaryTuplet = false
+}
+
+@AutoClone
+
+class TimeSignature {
+    int numerator = 4
+    Duration denominator = new Duration()
+    List<Integer> beams = [2, 2, 2, 2]
 }
 
 class Marker {
