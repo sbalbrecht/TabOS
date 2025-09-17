@@ -131,6 +131,7 @@ class GP5InputStream extends DataInputStream {
         song.measureHeaders = (0..<numMeasures).collect { i ->
             if (i > 0) skipBytes 1
             new MeasureHeader().tap { measureHeader ->
+                measureHeader.song = song
                 final int flags = readUnsignedByte()
                 number = i + 1
                 start = 0
@@ -243,213 +244,210 @@ class GP5InputStream extends DataInputStream {
 
         skipBytes(version == v(5, 0, 0) ? 1 : 2)
 
-        def start = Duration.QUARTER_TIME
-        // measures
-        for (def header : song.measureHeaders) {
-            header.start = start // fixme keep track of start?
-            for (def track : song.tracks) {
-                track.measures << new Measure().tap { measure ->
-                    // start: start, fixme?
-                    measure.header = header
-                    voices = (0..<MAX_VOICES).collect { new Voice().tap { voice ->
-                        voice.measure = measure
-                        beats = (0..readInt()).collect {new Beat().tap { beat ->
-                            final int beatFlags = readUnsignedByte()
-                            beat.voice = voice
-                            status = BeatStatus.from(bool(beatFlags & 0x40) ? read() : 1)
-                            duration = new Duration(
-                                value: 1 << (read() + 2),
-                                isDotted: bool(beatFlags & 0x01),
-                                tuplet: bool(beatFlags & 0x20) ? readInt().with { iTuplet -> new Tuplet(
-                                    enters: iTuplet,
-                                    times: highestOneBit(iTuplet)
-                                )} : null
-                            )
-                            effect.chord = bool(beatFlags & 0x02) ? readBoolean().with { isGP4Chord ->
-                                if (isGP4Chord) {
-                                    new Chord().tap {
-                                        newFormat = true
-                                        sharp = readBoolean()
-                                        skipBytes 3 // ?
-                                        root = new Pitch(read(), it.sharp ? Pitch.Intonation.SHARP : Pitch.Intonation.FLAT)
-                                        type = ChordType.from(read())
-                                        extension = ChordExtension.from(read())
-                                        bass = new Pitch(readInt(), -1) // fixme -1?
-                                        tonality = ChordAlteration.from(readInt())
-                                        add = readBoolean()
-                                        name = readByteSizeString(22)
-                                        fifth = ChordAlteration.from(read())
-                                        ninth = ChordAlteration.from(read())
-                                        eleventh = ChordAlteration.from(read())
-                                        firstFret = readInt()
-                                        strings = (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()]
-                                        barres = read().with { barresCount ->
-                                            [
-                                                (0..<5).collect { read() },
-                                                (0..<5).collect { read() },
-                                                (0..<5).collect { read() },
-                                            ].transpose()[0..<barresCount].collect(Barre::new) as List<Barre>
-                                        }
-                                        omissions = (0..<7).collect { readBoolean() }
-                                        skipBytes 1
-                                        fingerings = (0..<7).collect { Fingering.from(read()) }
-                                        show = readBoolean()
+        // read measures
+        int start = Duration.QUARTER_TIME
+        song.measureHeaders.each { header ->
+            header.start = start
+            song.tracks*.measures*.add new Measure().tap { measure ->
+                measure.header = header
+                voices = (0..<MAX_VOICES).collect { new Voice().tap { voice ->
+                    voice.measure = measure
+                    beats = (0..readInt()).collect {new Beat().tap { beat ->
+                        beat.voice = voice
+                        final int beatFlags = readUnsignedByte()
+                        status = BeatStatus.from(bool(beatFlags & 0x40) ? read() : 1)
+                        duration = new Duration(
+                            value: 1 << (read() + 2),
+                            isDotted: bool(beatFlags & 0x01),
+                            tuplet: bool(beatFlags & 0x20) ? readInt().with { iTuplet -> new Tuplet(
+                                enters: iTuplet,
+                                times: highestOneBit(iTuplet)
+                            )} : null
+                        )
+                        effect.chord = bool(beatFlags & 0x02) ? readBoolean().with { isGP4Chord ->
+                            if (isGP4Chord) {
+                                new Chord().tap {
+                                    newFormat = true
+                                    sharp = readBoolean()
+                                    skipBytes 3 // ?
+                                    root = new Pitch(read(), it.sharp ? Pitch.Intonation.SHARP : Pitch.Intonation.FLAT)
+                                    type = ChordType.from(read())
+                                    extension = ChordExtension.from(read())
+                                    bass = new Pitch(readInt(), -1) // fixme -1?
+                                    tonality = ChordAlteration.from(readInt())
+                                    add = readBoolean()
+                                    name = readByteSizeString(22)
+                                    fifth = ChordAlteration.from(read())
+                                    ninth = ChordAlteration.from(read())
+                                    eleventh = ChordAlteration.from(read())
+                                    firstFret = readInt()
+                                    strings = (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()]
+                                    barres = read().with { barresCount ->
+                                        [
+                                            (0..<5).collect { read() },
+                                            (0..<5).collect { read() },
+                                            (0..<5).collect { read() },
+                                        ].transpose()[0..<barresCount].collect(Barre::new) as List<Barre>
                                     }
-                                } else {
-                                    new Chord().tap {
-                                        name = readIntByteSizeString()
-                                        firstFret = readInt()
-                                        strings = firstFret ? (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()] : [new GuitarString(-1, -1)] * track.strings.size()
-                                    }
+                                    omissions = (0..<7).collect { readBoolean() }
+                                    skipBytes 1
+                                    fingerings = (0..<7).collect { Fingering.from(read()) }
+                                    show = readBoolean()
                                 }
-                            } : null
-                            text = bool(beatFlags & 0x04) ? readIntByteSizeString() : null
-                            // beat effects
-                            if (bool(beatFlags & 0x08)) {
-                                short beatEffectFlags = readShort()
-                                effect.vibrato = bool(beatEffectFlags & 0x02)
-                                effect.fadeIn = bool(beatEffectFlags & 0x10)
-                                if (bool(beatEffectFlags & 0x20)) {
-                                    effect.slapEffect = SlapEffect.from(read())
+                            } else {
+                                new Chord().tap {
+                                    name = readIntByteSizeString()
+                                    firstFret = readInt()
+                                    strings = firstFret ? (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()] : [new GuitarString(-1, -1)] * track.strings.size()
                                 }
-                                if (bool(beatEffectFlags & 0x400)) {
-                                    effect.tremoloBar = readInt().with { bendValue ->
-                                        effect.slapEffect ? null : new BendEffect(
-                                            value: bendValue,
-                                            type: BendType.DIP,
-                                            points: [
-                                                new BendPoint(0, 0),
-                                                new BendPoint(
-                                                    Math.round(BendEffect.MAX_POSITION / 2) as int,
-                                                    Math.round(-bendValue / 25) as int
-                                                ),
-                                                new BendPoint(BendEffect.MAX_POSITION, 0)
-                                            ]
-                                        )
-                                    }
-                                }
-                                if (bool(beatEffectFlags & 0x40)) {
-                                    effect.stroke = [read(), read()].with { strokeUp, strokeDown ->
-                                        if (strokeUp > 0) new BeatStroke(
-                                            direction: BeatStrokeDirection.DOWN, // swapped
-                                            value: strokeUp // fixme map to duration
-                                        ) else if (strokeDown > 0) new BeatStroke(
-                                            direction: BeatStrokeDirection.UP, // swapped
-                                            value: strokeDown // fixme map to duration
-                                        ) else null
-                                    }
-                                }
-                                effect.hasRasgueado = bool(beatEffectFlags & 0x100)
-                                effect.pickStroke = bool(beatEffectFlags & 0x200) ? BeatStrokeDirection.from(read()) : BeatStrokeDirection.NONE
                             }
-                            beat.effect.mixTableChange = bool(beatFlags & 0x10) ? new MixTableChange().tap {
-                                instrument = toMixTableItem(read())
-                                rse = new RSEInstrument(
-                                    instrument: readInt(),
-                                    unknown: readInt(), // fixme ? mostly 1
-                                    soundBank: readInt(),
-                                    effectNumber: (version == v(5, 0, 0)) ? readShort().tap { skip 1 } : readInt(),
-                                ).tap { if (version == v(5, 0, 0)) skipBytes 1 }
-                                Closure<MixTableItem> toMixTableItem = { int value -> value >= 0 ? new MixTableItem(value) : null }
-                                volume = toMixTableItem(read())
-                                balance = toMixTableItem(read())
-                                chorus = toMixTableItem(read())
-                                reverb = toMixTableItem(read())
-                                phaser = toMixTableItem(read())
-                                tremolo = toMixTableItem(read())
-                                tempoName = readIntByteSizeString() // gp5
-                                tempo = toMixTableItem(readInt())
-                                volume?.duration = read()
-                                balance?.duration = read()
-                                chorus?.duration = read()
-                                reverb?.duration = read()
-                                phaser?.duration = read()
-                                tremolo?.duration = read()
-                                tempo?.duration = read()
-                                hideTempo = !tempo && version > v(5, 0, 0) && readBoolean()
-                                // gp4 additions
-                                def mixTableChangeFlags = read()
-                                volume?.allTracks = bool(mixTableChangeFlags & 0x01)
-                                balance?.allTracks = bool(mixTableChangeFlags & 0x02)
-                                chorus?.allTracks = bool(mixTableChangeFlags & 0x04)
-                                reverb?.allTracks = bool(mixTableChangeFlags & 0x08)
-                                phaser?.allTracks = bool(mixTableChangeFlags & 0x10)
-                                tremolo?.allTracks = bool(mixTableChangeFlags & 0x20)
-                                // gp5 additions
-                                useRSE = bool(mixTableChangeFlags & 0x40)
-                                wah = new WahEffect(
-                                    value: read(),
-                                    display: bool(mixTableChangeFlags & 0x80)
-                                )
-                                if (instrument < 0) rse = null
-                                // read rse effect
-                                if (version > v(5, 0, 0)) {
-                                    def effect = readIntByteSizeString()
-                                    def effectCategory = readIntByteSizeString()
-                                    if (rse) {
-                                        rse.effect = effect
-                                        rse.effectCategory = effectCategory
-                                    }
+                        } : null
+                        text = bool(beatFlags & 0x04) ? readIntByteSizeString() : null
+                        // beat effects
+                        if (bool(beatFlags & 0x08)) {
+                            short beatEffectFlags = readShort()
+                            effect.vibrato = bool(beatEffectFlags & 0x02)
+                            effect.fadeIn = bool(beatEffectFlags & 0x10)
+                            if (bool(beatEffectFlags & 0x20)) {
+                                effect.slapEffect = SlapEffect.from(read())
+                            }
+                            if (bool(beatEffectFlags & 0x400)) {
+                                effect.tremoloBar = readInt().with { bendValue ->
+                                    effect.slapEffect ? null : new BendEffect(
+                                        value: bendValue,
+                                        type: BendType.DIP,
+                                        points: [
+                                            new BendPoint(0, 0),
+                                            new BendPoint(
+                                                Math.round(BendEffect.MAX_POSITION / 2) as int,
+                                                Math.round(-bendValue / 25) as int
+                                            ),
+                                            new BendPoint(BendEffect.MAX_POSITION, 0)
+                                        ]
+                                    )
                                 }
-                                it
-                            } : null
-
-                            // read notes
-                            final int stringFlags = read()
-                            notes = track.strings.findAll {
-                                stringFlags & 1 << (7 - it.number())
-                            }.collect { string -> new Note().tap { note ->
-                                note.beat = beat
-                                note.string = string.number()
-                                effect = new NoteEffect()
-                                effect.heavyAccentuatedNote = bool(stringFlags & 0x02)
-                                effect.ghostNote = bool(stringFlags & 0x04)
-                                effect.accentuatedNote = bool(stringFlags & 0x40)
-                                type = bool(stringFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
-                                velocity = bool(stringFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
-                                if (bool(stringFlags & 0x20)) {
-                                    int fret = read()
-                                    int value = (note.type == NoteType.TIE) ? getTiedNoteValue(note) : fret
-                                    note.value = value in (0..<100) ? value : 0
+                            }
+                            if (bool(beatEffectFlags & 0x40)) {
+                                effect.stroke = [read(), read()].with { strokeUp, strokeDown ->
+                                    if (strokeUp > 0) new BeatStroke(
+                                        direction: BeatStrokeDirection.DOWN, // swapped
+                                        value: strokeUp // fixme map to duration
+                                    ) else if (strokeDown > 0) new BeatStroke(
+                                        direction: BeatStrokeDirection.UP, // swapped
+                                        value: strokeDown // fixme map to duration
+                                    ) else null
                                 }
-                                effect.leftHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
-                                effect.rightHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
-                                durationPercent = bool(stringFlags & 0x01) ? readDouble() : 1.0
-                                swapAccidentals = bool(read() & 0x02)
-                                def noteEffectFlags = readShort()
-                                effect.hammer = bool(noteEffectFlags & 0x0002)
-                                effect.letRing = bool(noteEffectFlags & 0x0008)
-                                effect.staccato = bool(noteEffectFlags & 0x0100)
-                                effect.palmMute = bool(noteEffectFlags & 0x0200)
-                                effect.vibrato = bool(noteEffectFlags & 0x4000)
-                                effect.bend = bool(noteEffectFlags & 0x0001) ? readBend() : null
-                                effect.grace = bool(noteEffectFlags & 0x0010) ? readGrace() : null
-                                effect.tremoloPicking = bool(noteEffectFlags & 0x0400) ? readTremoloPicking() : null
-                                effect.slides = bool(noteEffectFlags & 0x0800) ? readSlides() : []
-                                effect.harmonic = bool(noteEffectFlags & 0x1000) ? readHarmonic() : null
-                                effect.trill = bool(noteEffectFlags & 0x2000) ? readTrill() : null
-                            }}
-
+                            }
+                            effect.hasRasgueado = bool(beatEffectFlags & 0x100)
+                            effect.pickStroke = bool(beatEffectFlags & 0x200) ? BeatStrokeDirection.from(read()) : BeatStrokeDirection.NONE
+                        }
+                        beat.effect.mixTableChange = bool(beatFlags & 0x10) ? new MixTableChange().tap {
+                            Closure<MixTableItem> toMixTableItem = { int value -> value >= 0 ? new MixTableItem(value) : null }
+                            instrument = toMixTableItem(read())
+                            rse = new RSEInstrument(
+                                instrument: readInt(),
+                                unknown: readInt(), // fixme ? mostly 1
+                                soundBank: readInt(),
+                                effectNumber: (version == v(5, 0, 0)) ? readShort().tap { skip 1 } : readInt(),
+                            ).tap { if (version == v(5, 0, 0)) skipBytes 1 }
+                            volume = toMixTableItem(read())
+                            balance = toMixTableItem(read())
+                            chorus = toMixTableItem(read())
+                            reverb = toMixTableItem(read())
+                            phaser = toMixTableItem(read())
+                            tremolo = toMixTableItem(read())
+                            tempoName = readIntByteSizeString() // gp5
+                            tempo = toMixTableItem(readInt())
+                            volume?.duration = read()
+                            balance?.duration = read()
+                            chorus?.duration = read()
+                            reverb?.duration = read()
+                            phaser?.duration = read()
+                            tremolo?.duration = read()
+                            tempo?.duration = read()
+                            hideTempo = !tempo && version > v(5, 0, 0) && readBoolean()
+                            // gp4 additions
+                            def mixTableChangeFlags = read()
+                            volume?.allTracks = bool(mixTableChangeFlags & 0x01)
+                            balance?.allTracks = bool(mixTableChangeFlags & 0x02)
+                            chorus?.allTracks = bool(mixTableChangeFlags & 0x04)
+                            reverb?.allTracks = bool(mixTableChangeFlags & 0x08)
+                            phaser?.allTracks = bool(mixTableChangeFlags & 0x10)
+                            tremolo?.allTracks = bool(mixTableChangeFlags & 0x20)
                             // gp5 additions
-                            // beat = getBeat(voice, start)
-                            short gp5beatFlags = readShort()
-                            octave = switch (true) {
-                                case bool(gp5beatFlags & 0x0010) -> Octave.OTTAVA
-                                case bool(gp5beatFlags & 0x0020) -> Octave.OTTAVA_BASSA
-                                case bool(gp5beatFlags & 0x0040) -> Octave.OTTAVA_BASSA
-                                case bool(gp5beatFlags & 0x0100) -> Octave.OTTAVA_BASSA
-                                default -> Octave.NONE
+                            useRSE = bool(mixTableChangeFlags & 0x40)
+                            wah = new WahEffect(
+                                value: read(),
+                                display: bool(mixTableChangeFlags & 0x80)
+                            )
+                            if (instrument < 0) rse = null
+                            // read rse effect
+                            if (version > v(5, 0, 0)) {
+                                def effect = readIntByteSizeString()
+                                def effectCategory = readIntByteSizeString()
+                                if (rse) {
+                                    rse.effect = effect
+                                    rse.effectCategory = effectCategory
+                                }
                             }
-                            display.breakBeam = bool(gp5beatFlags & 0x0001)
-                            display.forceBeam = bool(gp5beatFlags & 0x0004)
-                            display.forceBracket = bool(gp5beatFlags & 0x2000)
-                            display.breakSecondaryTuplet = bool(gp5beatFlags & 0x1000)
-                            display.beamDirection = bool(gp5beatFlags & 0x0002) ? VoiceDirection.DOWN : bool(gp5beatFlags & 0x0008) ? VoiceDirection.UP : VoiceDirection.NONE
-                            display.tupletBracket = bool(gp5beatFlags & 0x0200) ? TupletBracket.START : bool(gp5beatFlags & 0x0400) ? TupletBracket.END : TupletBracket.NONE
-                            display.breakSecondary = bool(gp5beatFlags & 0x0800) ? readBoolean() : false
+                            it
+                        } : null
+
+                        // read notes
+                        final int stringFlags = read()
+                        notes = track.strings.findAll {
+                            stringFlags & 1 << (7 - it.number())
+                        }.collect { string -> new Note().tap { note ->
+                            note.beat = beat
+                            note.string = string.number()
+                            effect = new NoteEffect()
+                            effect.heavyAccentuatedNote = bool(stringFlags & 0x02)
+                            effect.ghostNote = bool(stringFlags & 0x04)
+                            effect.accentuatedNote = bool(stringFlags & 0x40)
+                            type = bool(stringFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
+                            velocity = bool(stringFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
+                            if (bool(stringFlags & 0x20)) {
+                                int fret = read()
+                                int value = (note.type == NoteType.TIE) ? getTiedNoteValue(note) : fret
+                                note.value = value in (0..<100) ? value : 0
+                            }
+                            effect.leftHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
+                            effect.rightHandFinger = bool(stringFlags & 0x80) ? Fingering.from(read()) : null
+                            durationPercent = bool(stringFlags & 0x01) ? readDouble() : 1.0
+                            swapAccidentals = bool(read() & 0x02)
+                            def noteEffectFlags = readShort()
+                            effect.hammer = bool(noteEffectFlags & 0x0002)
+                            effect.letRing = bool(noteEffectFlags & 0x0008)
+                            effect.staccato = bool(noteEffectFlags & 0x0100)
+                            effect.palmMute = bool(noteEffectFlags & 0x0200)
+                            effect.vibrato = bool(noteEffectFlags & 0x4000)
+                            effect.bend = bool(noteEffectFlags & 0x0001) ? readBend() : null
+                            effect.grace = bool(noteEffectFlags & 0x0010) ? readGrace() : null
+                            effect.tremoloPicking = bool(noteEffectFlags & 0x0400) ? readTremoloPicking() : null
+                            effect.slides = bool(noteEffectFlags & 0x0800) ? readSlides() : []
+                            effect.harmonic = bool(noteEffectFlags & 0x1000) ? readHarmonic() : null
+                            effect.trill = bool(noteEffectFlags & 0x2000) ? readTrill() : null
                         }}
+
+                        // gp5 additions
+                        // beat = getBeat(voice, start)
+                        short gp5beatFlags = readShort()
+                        octave = switch (true) {
+                            case bool(gp5beatFlags & 0x0010) -> Octave.OTTAVA
+                            case bool(gp5beatFlags & 0x0020) -> Octave.OTTAVA_BASSA
+                            case bool(gp5beatFlags & 0x0040) -> Octave.OTTAVA_BASSA
+                            case bool(gp5beatFlags & 0x0100) -> Octave.OTTAVA_BASSA
+                            default -> Octave.NONE
+                        }
+                        display.breakBeam = bool(gp5beatFlags & 0x0001)
+                        display.forceBeam = bool(gp5beatFlags & 0x0004)
+                        display.forceBracket = bool(gp5beatFlags & 0x2000)
+                        display.breakSecondaryTuplet = bool(gp5beatFlags & 0x1000)
+                        display.beamDirection = bool(gp5beatFlags & 0x0002) ? VoiceDirection.DOWN : bool(gp5beatFlags & 0x0008) ? VoiceDirection.UP : VoiceDirection.NONE
+                        display.tupletBracket = bool(gp5beatFlags & 0x0200) ? TupletBracket.START : bool(gp5beatFlags & 0x0400) ? TupletBracket.END : TupletBracket.NONE
+                        display.breakSecondary = bool(gp5beatFlags & 0x0800) ? readBoolean() : false
                     }}
-                }
+                }}
             }
             start += header.length()
         }

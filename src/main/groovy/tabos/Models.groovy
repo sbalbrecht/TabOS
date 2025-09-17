@@ -209,7 +209,7 @@ record Color(int r, int g, int b) {
 }
 
 class Track {
-    Song song = null
+    Song song
     int number = 1
     int fretCount = 24
     int offset = 0
