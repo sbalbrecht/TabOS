@@ -297,6 +297,7 @@ enum Accentuation {
     static from(int value) { values().find{ it.value == value } }
 }
 
+@TupleConstructor
 record GuitarString(int number, int value) {
     @Override String toString() { 'C C# D D# E F F# G G# A A# B'.split()[value % 12] + value.intdiv(12) }
 }

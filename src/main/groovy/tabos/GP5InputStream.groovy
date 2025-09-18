@@ -153,8 +153,8 @@ class GP5InputStream extends FilterInputStream {
                         b: readUnsignedByte()
                     ).tap { skipBytes 1 }
                 ) : null
-                keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature // fixme
-                repeatAlternative = read().with { bool(flags & 0x10) ? it : null }
+                keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature
+                repeatAlternative = read().with { bool(flags & 0x10) ? it : 0 }
                 timeSignature.beams = (bool(flags & 0x01) || bool(flags & 0x02)) ? (0..<4).collect { read() } : prevHeader.timeSignature.beams
                 if ((flags & 0x10) == 0) skipBytes 1 // fixme what data?
                 tripletFeel = TripletFeel.from(read())
@@ -164,7 +164,7 @@ class GP5InputStream extends FilterInputStream {
                 fromDirection = fromSignsByMeasure[i] ?: null
 
                 // todo verify working
-                start = (i == 0) ? Duration.QUARTER_TIME : song.measureHeaders[i - 1].length()
+                start = (i == 0) ? Duration.QUARTER_TIME : song.measureHeaders[i - 1].start + measureHeader.length()
 
                 prevHeader = measureHeader
             }
@@ -189,7 +189,7 @@ class GP5InputStream extends FilterInputStream {
                         readInt()
                     }.indexed().collect { i, tuning -> new GuitarString(
                         number: i + 1,
-                        tuning: tuning
+                        value: tuning
                     )}[0..<stringCount]
                 }
                 port = readInt()
