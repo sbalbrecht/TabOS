@@ -53,17 +53,17 @@ class GP5InputStream extends DataInputStream {
             margin.top = readInt()
             margin.bottom = readInt()
             scoreSizeProportion = readInt() / 100
-            List<Integer> templateFlags = [read(), read()]
-            title = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x01))
-            subtitle = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x02))
-            artist = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x04))
-            album = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x08))
-            words = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x10))
-            music = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x20))
-            wordsAndMusic = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x40))
-            copyright1 = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x80))
-            copyright2 = new HeaderElement(readIntByteSizeString(), bool(templateFlags[0] & 0x80))
-            pageNumber = new HeaderElement(readIntByteSizeString(), bool(templateFlags[1] & 0x01))
+            short templateFlags = readShort()
+            title = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x001))
+            subtitle = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x002))
+            artist = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x004))
+            album = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x008))
+            words = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x010))
+            music = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x020))
+            wordsAndMusic = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x040))
+            copyright1 = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x080))
+            copyright2 = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x080))
+            pageNumber = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x100))
         }
         song.tempoName = readIntByteSizeString()
         song.tempo = readInt()
@@ -421,12 +421,64 @@ class GP5InputStream extends DataInputStream {
                             effect.staccato = bool(noteEffectFlags & 0x0100)
                             effect.palmMute = bool(noteEffectFlags & 0x0200)
                             effect.vibrato = bool(noteEffectFlags & 0x4000)
-                            effect.bend = bool(noteEffectFlags & 0x0001) ? readBend() : null
-                            effect.grace = bool(noteEffectFlags & 0x0010) ? readGrace() : null
-                            effect.tremoloPicking = bool(noteEffectFlags & 0x0400) ? readTremoloPicking() : null
-                            effect.slides = bool(noteEffectFlags & 0x0800) ? readSlides() : []
-                            effect.harmonic = bool(noteEffectFlags & 0x1000) ? readHarmonic() : null
-                            effect.trill = bool(noteEffectFlags & 0x2000) ? readTrill() : null
+                            effect.bend = bool(noteEffectFlags & 0x0001) ? new BendEffect(
+                                type: BendType.from(read()),
+                                value: readInt(),
+                                points: (0..readInt()).collect { new BendPoint(
+                                    position: Math.round(readInt() * BendEffect.MAX_POSITION / BEND_POSITION),
+                                    value: Math.round(readInt() * BendEffect.SEMITONE_LENGTH / BEND_SEMITONE),
+                                    vibrato: readBoolean(),
+                                )} ?: []
+                            ).with { bend -> bend.points ? bend : null } : null
+                            effect.grace = bool(noteEffectFlags & 0x0010) ? new GraceEffect().tap {
+                                fret = read()
+                                velocity = unpackVelocity(read())
+                                transition = GraceEffectTransition.from(read())
+                                duration = 1 << (7 - read())
+                                def graceFlags = read()
+                                isDead = (graceFlags & 0x01) != 0
+                                isOnBeat = (graceFlags & 0x02) != 0
+                            } : null
+                            effect.tremoloPicking = bool(noteEffectFlags & 0x0400) ? new TremoloPickingEffect(
+                                duration: new Duration(
+                                    value: switch (read()) {
+                                        case 1 -> Duration.EIGHTH
+                                        case 2 -> Duration.SIXTEENTH
+                                        case 3 -> Duration.THIRTY_SECOND
+                                        default -> throw new RuntimeException("Invalid tremolo picking effect duration $it")
+                                    }
+                                )
+                            ) : null
+                            effect.slides = bool(noteEffectFlags & 0x0800) ? read().with { slideFlags ->
+                                def slides = []
+                                if (bool(slideFlags & 0x01)) slides << SlideType.SHIFT_SLIDE_TO
+                                if (bool(slideFlags & 0x02)) slides << SlideType.LEGATO_SLIDE_TO
+                                if (bool(slideFlags & 0x04)) slides << SlideType.OUT_DOWNWARDS
+                                if (bool(slideFlags & 0x08)) slides << SlideType.OUT_UPWARDS
+                                if (bool(slideFlags & 0x10)) slides << SlideType.INTO_FROM_BELOW
+                                if (bool(slideFlags & 0x20)) slides << SlideType.INTO_FROM_BELOW
+                                slides
+                            } : []
+                            effect.harmonic = bool(noteEffectFlags & 0x1000) ? switch (read()) {
+                                case 1 -> new NaturalHarmonic()
+                                case 2 -> new ArtificialHarmonic(
+                                    pitch: new Pitch(read(), read()),
+                                    octave: Octave.from(read())
+                                )
+                                case 3 -> new TappedHarmonic(fret: read())
+                                case 4 -> new PinchHarmonic()
+                                case 5 -> new SemiHarmonic()
+                                default -> null
+                            } : null
+                            effect.trill = bool(noteEffectFlags & 0x2000) ? new TrillEffect(
+                                fret: read(),
+                                duration: new Duration(switch (read()) {
+                                    case 1 -> Duration.SIXTEENTH
+                                    case 2 -> Duration.THIRTY_SECOND
+                                    case 3 -> Duration.SIXTY_FOURTH
+                                    default -> throw new RuntimeException("Invalid trill effect duration")
+                                })
+                            ) : null
                         }}
 
                         // gp5 additions
@@ -489,90 +541,6 @@ class GP5InputStream extends DataInputStream {
         byte[] bytes = new byte[30]
         read(bytes)
         new String(new String(bytes, 0, len in (0..30) ? len : 30, 'UTF-8').getBytes('UTF-8'), 'UTF-8')
-    }
-
-    private BendEffect readBend() throws IOException {
-        new BendEffect(
-            type: BendType.from(read()),
-            value: readInt(),
-            points: (0..readInt()).collect {
-                new BendPoint(
-                    position: Math.round(readInt() * BendEffect.MAX_POSITION / BEND_POSITION),
-                    value: Math.round(readInt() * BendEffect.SEMITONE_LENGTH / BEND_SEMITONE),
-                    vibrato: readBoolean(),
-                )
-            } ?: []
-        ).with { bend -> bend.points ? bend : null }
-    }
-
-    private GraceEffect readGrace() throws IOException {
-        new GraceEffect().tap {
-            fret = read()
-            velocity = unpackVelocity(read())
-            transition = GraceEffectTransition.from(read())
-            duration = 1 << (7 - read())
-            def graceFlags = read()
-            isDead = (graceFlags & 0x01) != 0
-            isOnBeat = (graceFlags & 0x02) != 0
-        }
-    }
-
-    private TremoloPickingEffect readTremoloPicking()  {
-        new TremoloPickingEffect(
-            duration: new Duration(
-                value: read().with {
-                    return switch (it) {
-                        case 1 -> Duration.EIGHTH
-                        case 2 -> Duration.SIXTEENTH
-                        case 3 -> Duration.THIRTY_SECOND
-                        default -> throw new RuntimeException("Invalid tremolo picking effect duration $it")
-                    }
-                }
-            )
-        )
-    }
-
-    private List<SlideType> readSlides() {
-        read().with { slideFlags ->
-            def slides = []
-            if (bool(slideFlags & 0x01)) slides << SlideType.SHIFT_SLIDE_TO
-            if (bool(slideFlags & 0x02)) slides << SlideType.LEGATO_SLIDE_TO
-            if (bool(slideFlags & 0x04)) slides << SlideType.OUT_DOWNWARDS
-            if (bool(slideFlags & 0x08)) slides << SlideType.OUT_UPWARDS
-            if (bool(slideFlags & 0x10)) slides << SlideType.INTO_FROM_BELOW
-            if (bool(slideFlags & 0x20)) slides << SlideType.INTO_FROM_BELOW
-            slides
-        }
-    }
-
-    private HarmonicEffect readHarmonic() {
-        return switch (read()) {
-            case 1 -> new NaturalHarmonic()
-            case 2 -> new ArtificialHarmonic(
-                pitch: new Pitch(read(), read()),
-                octave: Octave.from(read())
-            )
-            case 3 -> new TappedHarmonic(fret: read())
-            case 4 -> new PinchHarmonic()
-            case 5 -> new SemiHarmonic()
-            default -> null
-        }
-    }
-
-    private TrillEffect readTrill() {
-        new TrillEffect(
-            fret: read(),
-            duration: new Duration(
-                value: read().with {
-                    return switch (it) {
-                        case 1 -> Duration.SIXTEENTH
-                        case 2 -> Duration.SIXTEENTH
-                        case 3 -> Duration.SIXTEENTH
-                        default -> throw new RuntimeException("Invalid trill effect duration $it")
-                    }
-                }
-            )
-        )
     }
 
     private String readIntSizeString() {
