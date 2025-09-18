@@ -13,7 +13,7 @@ Song
  */
 
 class Song {
-    String version // todo version tuple?
+    String version
     // todo clipboard?
     String title
     String subtitle
@@ -354,7 +354,9 @@ enum KeySignature {
         this.value = value
         this.isMinor = isMinor
     }
-    static from(int value, int isMinor) { values().find{ it.value == value && it.isMinor == isMinor } }
+    static from(int value, int isMinor) {
+        values().find{ it.value == value && it.isMinor == isMinor }
+    }
 }
 
 enum BeatStrokeDirection {
@@ -574,8 +576,8 @@ class Note {
 @TupleConstructor
 class Measure {
     static final int MAX_VOICES = 2
-    MeasureHeader header
     Track track
+    MeasureHeader header
     MeasureClef clef = MeasureClef.TREBLE
     List<Voice> voices
     LineBreak lineBreak = LineBreak.NONE

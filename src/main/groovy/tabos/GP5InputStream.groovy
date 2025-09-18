@@ -17,7 +17,6 @@ class GP5InputStream extends FilterInputStream {
         final Song song = new Song()
 
         song.version = readFixedLengthStringField 30
-//        song.version = readFixedLengthStringField 30
         final Tuple version = VERSIONS[song.version]
 
         // todo if isClipboard copyClipboard?
@@ -135,14 +134,13 @@ class GP5InputStream extends FilterInputStream {
             if (i > 0) skipBytes 1
             song.addMeasureHeader new MeasureHeader().tap { measureHeader ->
                 measureHeader.song = song
-                final int flags = readUnsignedByte()
+                final int flags = read()
                 number = i + 1
-                start = 0
                 isRepeatOpen = bool(flags & 0x04)
                 hasDoubleBar = bool(flags & 0x80)
                 timeSignature = new TimeSignature(
                     numerator: (bool(flags & 0x01)) ? read() : prevHeader.timeSignature.numerator,
-                    denominator: (bool(flags & 0x02)) ? new Duration(read()) : prevHeader.timeSignature.denominator
+                    denominator: (bool(flags & 0x02)) ? new Duration(read()) : prevHeader.timeSignature.denominator.clone()
                 )
                 repeatClose = (bool(flags & 0x08) ? read() : -1).with { it > -1 ? it - 1 : it}
                 marker = bool(flags & 0x20) ? new Marker(
@@ -153,10 +151,10 @@ class GP5InputStream extends FilterInputStream {
                         b: readUnsignedByte()
                     ).tap { skipBytes 1 }
                 ) : null
-                keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature
-                repeatAlternative = read().with { bool(flags & 0x10) ? it : 0 }
-                timeSignature.beams = (bool(flags & 0x01) || bool(flags & 0x02)) ? (0..<4).collect { read() } : prevHeader.timeSignature.beams
-                if ((flags & 0x10) == 0) skipBytes 1 // fixme what data?
+                keySignature = (bool(flags & 0x40)) ? (KeySignature.from(read(), read()) ?: prevHeader.keySignature) : prevHeader.keySignature
+                repeatAlternative = bool(flags & 0x10) ? read() : 0
+                timeSignature.beams = bool(flags & 0x03) ? (0..<4).collect { read() } : prevHeader.timeSignature.beams
+                if ((flags & 0x10) == 0) skipBytes 1 // Always 0
                 tripletFeel = TripletFeel.from(read())
 
                 // gp5
@@ -170,11 +168,11 @@ class GP5InputStream extends FilterInputStream {
             }
         }
 
-        song.tracks = (1..numTracks).collect { trackNumber ->
-            if (trackNumber == 1 || version == v(5, 0, 0)) skipBytes(1) // probably some data
+        song.tracks = (0..<numTracks).collect { trackIdx ->
+            if (trackIdx == 0 || version == v(5, 0, 0)) skipBytes(1) // Always 0
             read().with { flags -> new Track().tap { track ->
                 track.song = song
-                number = trackNumber
+                number = trackIdx + 1
                 isPercussionTrack = bool(flags & 0x01)
                 is12StringedGuitarTrack = bool(flags & 0x02)
                 isBanjoTrack = bool(flags & 0x04)
@@ -211,22 +209,22 @@ class GP5InputStream extends FilterInputStream {
                     b: readUnsignedByte()
                 ).tap { skipBytes 1 }
                 settings = readShort().with { settingsFlags -> new TrackSettings(
-                    tablature: bool(settingsFlags & 0x0001),
-                    notation: bool(settingsFlags & 0x0002),
-                    diagramsAreBelow: bool(settingsFlags & 0x0004),
-                    showRhythm: bool(settingsFlags & 0x0008),
-                    forceHorizontal: bool(settingsFlags & 0x0010),
-                    forceChannels: bool(settingsFlags & 0x0020),
-                    diagramList: bool(settingsFlags & 0x0040),
-                    diagramsInScore: bool(settingsFlags & 0x0080),
-                    unknown: bool(settingsFlags & 0x0100), // fixme 0x0100 ?
-                    autoLetRing: bool(settingsFlags & 0x0200),
-                    autoBrush: bool(settingsFlags & 0x0400),
-                    extendRhythmic: bool(settingsFlags & 0x0800),
+                    tablature: bool(settingsFlags & 0x001),
+                    notation: bool(settingsFlags & 0x002),
+                    diagramsAreBelow: bool(settingsFlags & 0x004),
+                    showRhythm: bool(settingsFlags & 0x008),
+                    forceHorizontal: bool(settingsFlags & 0x010),
+                    forceChannels: bool(settingsFlags & 0x020),
+                    diagramList: bool(settingsFlags & 0x040),
+                    diagramsInScore: bool(settingsFlags & 0x080),
+                    unknown: bool(settingsFlags & 0x100), // fixme 0x0100 ?
+                    autoLetRing: bool(settingsFlags & 0x200),
+                    autoBrush: bool(settingsFlags & 0x400),
+                    extendRhythmic: bool(settingsFlags & 0x800),
                 )}
                 rse = new TrackRSE()
                 rse.autoAccentuation = Accentuation.from(read())
-                def channelBank = read() // fixme ?
+                channel.bank = read()
                 rse.humanize = read().tap {
                     readInt() // ?
                     readInt() // ?
@@ -240,19 +238,19 @@ class GP5InputStream extends FilterInputStream {
                     effectNumber: (version > v(5, 0, 0)) ? readInt() : readShort().tap { skip 1 }
                 )
                 if (version > v(5, 0, 0)) {
-                    rse.equalizer = (version < v(5, 1, 0)) ? null : new RSEEqualizer((0..<4).collect{ (-read() / 10) as float })
-                    rse.instrument.effect = (version < v(5, 1, 0)) ? null : readFixedLengthStringField()
-                    rse.instrument.effectCategory = (version < v(5, 1, 0)) ? null : readFixedLengthStringField()
+                    rse.equalizer = new RSEEqualizer((0..<4).collect{ (-read() / 10) as float })
+                    rse.instrument.effect = readFixedLengthStringField()
+                    rse.instrument.effectCategory = readFixedLengthStringField()
                 }
                 track
             }}
         }
 
-        skipBytes(version == v(5, 0, 0) ? 1 : 2)
+        skipBytes(version > v(5, 0, 0) ? 1 : 2)
 
         // read measures
         song.measureHeaders.each { header ->
-            song.tracks*.measures*.add new Measure(header).tap { measure ->
+            song.tracks.each { track -> track.measures << new Measure(track, header).tap { measure ->
                 voices = (0..<MAX_VOICES).collect { new Voice(measure).tap { voice ->
                     beats = (0..readInt()).collect {new Beat(voice).tap { beat ->
                         final int beatFlags = readUnsignedByte()
@@ -501,7 +499,7 @@ class GP5InputStream extends FilterInputStream {
                         display.breakSecondary = bool(gp5beatFlags & 0x0800) ? readBoolean() : false
                     }}
                 }}
-            }
+            }}
         }
 
         close()
