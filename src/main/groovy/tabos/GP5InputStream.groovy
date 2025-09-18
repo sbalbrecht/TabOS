@@ -490,8 +490,8 @@ class GP5InputStream extends DataInputStream {
                         octave = switch (true) {
                             case bool(gp5beatFlags & 0x0010) -> Octave.OTTAVA
                             case bool(gp5beatFlags & 0x0020) -> Octave.OTTAVA_BASSA
-                            case bool(gp5beatFlags & 0x0040) -> Octave.OTTAVA_BASSA
-                            case bool(gp5beatFlags & 0x0100) -> Octave.OTTAVA_BASSA
+                            case bool(gp5beatFlags & 0x0040) -> Octave.QUINDICESIMA
+                            case bool(gp5beatFlags & 0x0100) -> Octave.QUINDICESIMA_BASSA
                             default -> Octave.NONE
                         }
                         display.breakBeam = bool(gp5beatFlags & 0x0001)
