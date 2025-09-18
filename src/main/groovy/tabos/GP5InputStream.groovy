@@ -510,24 +510,17 @@ class GP5InputStream extends DataInputStream {
     }
 
     private static int getTiedNoteValue(Note note) {
-        def parentMeasure = note.beat.voice.measure
-        def voiceIndex = parentMeasure.voices.indexOf(note.beat.voice)
-        for (def entry : parentMeasure.track.measures.reversed().indexed()) {
-            def i = entry.key
-            def measure = entry.value
+        Measure parentMeasure = note.beat.voice.measure
+        int voiceIndex = parentMeasure.voices.indexOf(note.beat.voice)
+        parentMeasure.track.measures.reverse().indexed().findResult { i, measure ->
             Voice voice = measure.voices[voiceIndex]
             List<Beat> beats = (i == 0) ? voice.beats[0..voice.beats.indexOf(note.beat)] : voice.beats
-            for (def beat : beats.reversed()) {
-                if (beat.status != BeatStatus.EMPTY) {
-                    for (Note prevNote : beat.notes) {
-                        if (prevNote.string == note.string) {
-                            return prevNote.value
-                        }
-                    }
-                }
+            beats.reverse().findAll {
+                it.status != BeatStatus.EMPTY
+            }.findResult { beat ->
+                beat.notes.find { it.string == note.string }?.value
             }
-        }
-        -1
+        } ?: -1
     }
 
     private static int unpackVelocity(int dyn) {
