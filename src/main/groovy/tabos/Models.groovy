@@ -31,6 +31,7 @@ class Song {
     int tempo = 120
     boolean hideTempo = false
     KeySignature key = KeySignature.C_MAJOR
+    Map<String, Map<String, Integer>> directions
     List<MeasureHeader> measureHeaders = []
     List<Track> tracks = []
     RSEMasterEffect rseMasterEffect
@@ -43,13 +44,33 @@ class Song {
         if (header.isRepeatOpen || currentRepeatGroup.isClosed && header.repeatAlternative <= 0) {
             currentRepeatGroup = new RepeatGroup()
         }
-        currentRepeatGroup.addMeasureheader(header)
+        currentRepeatGroup.addMeasureHeader header
     }
 
     void newMeasure() {
         def header = new MeasureHeader()
         measureHeaders << header
         tracks.each {track -> track.measures << new Measure(track, header) }
+    }
+}
+
+class RepeatGroup {
+    List<MeasureHeader> headers = []
+    List<MeasureHeader> openings = []
+    List<MeasureHeader> closings = []
+    boolean isClosed = false
+    def addMeasureHeader(MeasureHeader header) {
+        if (!openings) openings << header
+        headers << header
+        header.repeatGroup = this
+        if (header.repeatClose > 0) {
+            closings << header
+            isClosed = true
+        } else if (isClosed) {
+            openings << header
+            isClosed = false
+        }
+        header
     }
 }
 
@@ -108,26 +129,6 @@ class RSEMasterEffect {
     float volume
     float reverb
     RSEEqualizer equalizer
-}
-
-class RepeatGroup {
-    List<MeasureHeader> headers = []
-    List<MeasureHeader> openings = []
-    List<MeasureHeader> closings = []
-    boolean isClosed = false
-    MeasureHeader addMeasureHeader(MeasureHeader header) {
-        if (!openings) openings << header
-        headers << header
-        header.repeatGroup = this
-        if (header.repeatClose > 0) {
-            closings << header
-            isClosed = true
-        } else if (isClosed) {
-            openings << header
-            isClosed = false
-        }
-        header
-    }
 }
 
 @TupleConstructor

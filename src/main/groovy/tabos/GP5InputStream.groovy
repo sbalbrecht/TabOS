@@ -13,8 +13,9 @@ class GP5InputStream extends DataInputStream {
     @Override
     int read() throws IOException { super.read() }
 
-    def readSong() {
+    Song readSong() {
         final Song song = new Song()
+
         song.version = readFixedLengthStringField 30
         final Tuple version = VERSIONS[song.version]
 
@@ -92,14 +93,14 @@ class GP5InputStream extends DataInputStream {
             }
         }
 
-        def directions = [
+        song.directions = [
             signs: [
                 'Coda': readShort(),
                 'Double Coda': readShort(),
                 'Segno': readShort(),
                 'Segno Segno': readShort(),
                 'Fine': readShort()
-            ].groupBy { it.value },
+            ],
             fromSigns: [
                 'da Capo': readShort(),
                 'da Capo al Coda': readShort(),
@@ -115,7 +116,7 @@ class GP5InputStream extends DataInputStream {
                 'da Segno Segno al Fine': readShort(),
                 'da Coda': readShort(),
                 'da Double Coda': readShort()
-            ].groupBy { it.value }
+            ]
         ]
 
         if (song.rseMasterEffect) {
@@ -128,9 +129,11 @@ class GP5InputStream extends DataInputStream {
         final int numTracks = readInt()
 
         MeasureHeader prevHeader = null
-        song.measureHeaders = (0..<numMeasures).collect { i ->
+        final Map signsByMeasure = song.directions.signs.groupBy { it.value }
+        final Map fromSignsByMeasure = song.directions.fromSigns.groupBy { it.value }
+        (0..<numMeasures).each { i ->
             if (i > 0) skipBytes 1
-            new MeasureHeader().tap { measureHeader ->
+            song.addMeasureHeader new MeasureHeader().tap { measureHeader ->
                 measureHeader.song = song
                 final int flags = readUnsignedByte()
                 number = i + 1
@@ -157,8 +160,8 @@ class GP5InputStream extends DataInputStream {
                 tripletFeel = TripletFeel.from(read())
 
                 // gp5
-                direction = directions.signs[i] ?: null
-                fromDirection = directions.fromSigns[i] ?: null
+                direction = signsByMeasure[i] ?: null
+                fromDirection = fromSignsByMeasure[i] ?: null
 
                 prevHeader = measureHeader
             }
