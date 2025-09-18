@@ -183,7 +183,7 @@ class GP5InputStream extends DataInputStream {
                 isMute = bool(flags & 0x20)
                 useRSE = bool(flags & 0x40)
                 indicateTuning = bool(flags & 0x80)
-                name = readFixedLengthStringField(40)
+                name = readFixedLengthStringField 40
                 strings = readInt().with { stringCount ->
                     (0..<7).collect {
                         readInt()
@@ -277,7 +277,7 @@ class GP5InputStream extends DataInputStream {
                                     bass = new Pitch(readInt(), -1) // fixme -1?
                                     tonality = ChordAlteration.from(readInt())
                                     add = readBoolean()
-                                    name = readFixedLengthStringField(22)
+                                    name = readFixedLengthStringField 22
                                     fifth = ChordAlteration.from(read())
                                     ninth = ChordAlteration.from(read())
                                     eleventh = ChordAlteration.from(read())
