@@ -15,25 +15,25 @@ class GP5InputStream extends DataInputStream {
 
     def readSong() {
         final Song song = new Song()
-        song.version = readVersion()
+        song.version = readFixedLengthStringField 30
         final Tuple version = VERSIONS[song.version]
 
         // todo if isClipboard copyClipboard?
-        song.title = readIntByteSizeString()
-        song.subtitle = readIntByteSizeString()
-        song.artist = readIntByteSizeString()
-        song.album = readIntByteSizeString()
-        song.wordsAuthor = readIntByteSizeString()
-        song.musicAuthor = readIntByteSizeString()
-        song.copyright = readIntByteSizeString()
-        song.tabAuthor = readIntByteSizeString()
-        song.instructions = readIntByteSizeString()
-        song.notice = (0..<readInt()).collect {readIntByteSizeString() }
+        song.title = readFixedLengthStringField()
+        song.subtitle = readFixedLengthStringField()
+        song.artist = readFixedLengthStringField()
+        song.album = readFixedLengthStringField()
+        song.wordsAuthor = readFixedLengthStringField()
+        song.musicAuthor = readFixedLengthStringField()
+        song.copyright = readFixedLengthStringField()
+        song.tabAuthor = readFixedLengthStringField()
+        song.instructions = readFixedLengthStringField()
+        song.notice = (0..<readInt()).collect {readFixedLengthStringField() }
         song.lyrics = new Lyrics(
             lyricTrackIndex: readInt(),
             lines: (0..<5).collect {new LyricLine(
                 startingMeasure: readInt(),
-                line: readIntSizeString()
+                line: readVariableLengthStringField()
             )}
         )
 
@@ -54,18 +54,18 @@ class GP5InputStream extends DataInputStream {
             margin.bottom = readInt()
             scoreSizeProportion = readInt() / 100
             short templateFlags = readShort()
-            title = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x001))
-            subtitle = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x002))
-            artist = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x004))
-            album = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x008))
-            words = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x010))
-            music = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x020))
-            wordsAndMusic = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x040))
-            copyright1 = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x080))
-            copyright2 = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x080))
-            pageNumber = new HeaderElement(readIntByteSizeString(), bool(templateFlags & 0x100))
+            title = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x001))
+            subtitle = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x002))
+            artist = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x004))
+            album = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x008))
+            words = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x010))
+            music = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x020))
+            wordsAndMusic = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x040))
+            copyright1 = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x080))
+            copyright2 = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x080))
+            pageNumber = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x100))
         }
-        song.tempoName = readIntByteSizeString()
+        song.tempoName = readFixedLengthStringField()
         song.tempo = readInt()
         song.hideTempo = (version > v(5, 0, 0)) ? readBoolean() : false
         song.key = KeySignature.from(read(), 0).tap {
@@ -143,7 +143,7 @@ class GP5InputStream extends DataInputStream {
                 )
                 repeatClose = (bool(flags & 0x08) ? read() : -1).with { it > -1 ? it - 1 : it}
                 marker = bool(flags & 0x20) ? new Marker(
-                    title: readIntByteSizeString(),
+                    title: readFixedLengthStringField(),
                     color: new Color(
                         r: readUnsignedByte(),
                         g: readUnsignedByte(),
@@ -177,7 +177,7 @@ class GP5InputStream extends DataInputStream {
                 isMute = bool(flags & 0x20)
                 useRSE = bool(flags & 0x40)
                 indicateTuning = bool(flags & 0x80)
-                name = readByteSizeString(40)
+                name = readFixedLengthStringField(40)
                 strings = readInt().with { stringCount ->
                     (0..<7).collect {
                         readInt()
@@ -235,8 +235,8 @@ class GP5InputStream extends DataInputStream {
                 )
                 if (version > v(5, 0, 0)) {
                     rse.equalizer = (version < v(5, 1, 0)) ? null : new RSEEqualizer((0..<4).collect{ (-read() / 10) as float })
-                    rse.instrument.effect = (version < v(5, 1, 0)) ? null : readIntByteSizeString()
-                    rse.instrument.effectCategory = (version < v(5, 1, 0)) ? null : readIntByteSizeString()
+                    rse.instrument.effect = (version < v(5, 1, 0)) ? null : readFixedLengthStringField()
+                    rse.instrument.effectCategory = (version < v(5, 1, 0)) ? null : readFixedLengthStringField()
                 }
                 track
             }}
@@ -276,7 +276,7 @@ class GP5InputStream extends DataInputStream {
                                     bass = new Pitch(readInt(), -1) // fixme -1?
                                     tonality = ChordAlteration.from(readInt())
                                     add = readBoolean()
-                                    name = readByteSizeString(22)
+                                    name = readFixedLengthStringField(22)
                                     fifth = ChordAlteration.from(read())
                                     ninth = ChordAlteration.from(read())
                                     eleventh = ChordAlteration.from(read())
@@ -296,13 +296,13 @@ class GP5InputStream extends DataInputStream {
                                 }
                             } else {
                                 new Chord().tap {
-                                    name = readIntByteSizeString()
+                                    name = readFixedLengthStringField()
                                     firstFret = readInt()
                                     strings = firstFret ? (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()] : [new GuitarString(-1, -1)] * track.strings.size()
                                 }
                             }
                         } : null
-                        text = bool(beatFlags & 0x04) ? readIntByteSizeString() : null
+                        text = bool(beatFlags & 0x04) ? readFixedLengthStringField() : null
                         // beat effects
                         if (bool(beatFlags & 0x08)) {
                             short beatEffectFlags = readShort()
@@ -356,7 +356,7 @@ class GP5InputStream extends DataInputStream {
                             reverb = toMixTableItem(read())
                             phaser = toMixTableItem(read())
                             tremolo = toMixTableItem(read())
-                            tempoName = readIntByteSizeString() // gp5
+                            tempoName = readFixedLengthStringField() // gp5
                             tempo = toMixTableItem(readInt())
                             volume?.duration = read()
                             balance?.duration = read()
@@ -383,8 +383,8 @@ class GP5InputStream extends DataInputStream {
                             if (instrument < 0) rse = null
                             // read rse effect
                             if (version > v(5, 0, 0)) {
-                                def effect = readIntByteSizeString()
-                                def effectCategory = readIntByteSizeString()
+                                def effect = readFixedLengthStringField()
+                                def effectCategory = readFixedLengthStringField()
                                 if (rse) {
                                     rse.effect = effect
                                     rse.effectCategory = effectCategory
@@ -524,43 +524,30 @@ class GP5InputStream extends DataInputStream {
     }
 
     private static int unpackVelocity(int dyn) {
-        def minVelocity = 15
-        def velocityIncrement = 16
-        minVelocity + (velocityIncrement * dyn) - velocityIncrement
+        Velocities.minVelocity + (Velocities.velocityIncrement * dyn) - Velocities.velocityIncrement
     }
 
-    private String readVersion() throws IOException {
-        int len = readUnsignedByte()
-        byte[] bytes = new byte[30]
+    private String readVariableLengthStringField() {
+        int contentLength = readInt()
+        // todo get charset from user preferences
+        readFixedLengthStringField(contentLength, contentLength, 'UTF-8')
+    }
+
+    private String readFixedLengthStringField() throws IOException {
+        readFixedLengthStringField(readInt() - 1)
+    }
+
+    private String readFixedLengthStringField(int fieldLength) {
+        readFixedLengthStringField(fieldLength, readUnsignedByte(), 'UTF-8')
+    }
+
+    private String readFixedLengthStringField(int fieldLength, int contentLength, String charset) throws IOException{
+        byte[] bytes = new byte[fieldLength > 0 ? fieldLength : contentLength]
         read(bytes)
-        new String(new String(bytes, 0, len in (0..30) ? len : 30, 'UTF-8').getBytes('UTF-8'), 'UTF-8')
-    }
-
-    private String readIntSizeString() {
-        int length = readInt()
-        readString(length, length, 'UTF-8')
-    }
-
-    private String readByteSizeString(int size) {
-        readString(size, readUnsignedByte(), 'UTF-8')
-    }
-
-    private String readIntByteSizeString() throws IOException {
-        readString(readInt() - 1, readUnsignedByte(), 'UTF-8')
-    }
-
-    private String readString(int size, int len, String charset) throws IOException{
-        byte[] bytes = new byte[size > 0 ? size : len]
-        read(bytes)
-        newString(bytes, len in (0..bytes.length) ? len : size, charset).tap {
-            println "readString size=$size length=$len text=$it"
-        }
-    }
-
-    private static String newString(byte[] bytes, int length, String charset) {
+        int length = contentLength in (0..bytes.length) ? contentLength : fieldLength
         try {
-            new String(new String(bytes, 0, length, charset).getBytes('UTF-8'), 'UTF-8')
-        } catch (Throwable e) {
+            new String(bytes, 0, length, charset).getBytes('UTF-8').with { new String(it, 'UTF-8') }
+        } catch (Exception e) {
             e.printStackTrace()
             new String(bytes, 0, length)
         }
