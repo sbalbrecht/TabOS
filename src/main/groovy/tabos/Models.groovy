@@ -410,6 +410,7 @@ enum NoteType {
     static from(int value) { values().find{ it.value == value } }
 }
 
+@TupleConstructor
 class Voice {
     Measure measure
     List<Beat> beats = []
@@ -417,8 +418,7 @@ class Voice {
     def isEmpty() { beats.isEmpty() }
 }
 
-
-
+@TupleConstructor
 class Beat {
     Voice voice
     List<Note> notes = []
@@ -573,8 +573,8 @@ class Note {
 @TupleConstructor
 class Measure {
     static final int MAX_VOICES = 2
-    Track track
     MeasureHeader header
+    Track track
     MeasureClef clef = MeasureClef.TREBLE
     List<Voice> voices
     LineBreak lineBreak = LineBreak.NONE

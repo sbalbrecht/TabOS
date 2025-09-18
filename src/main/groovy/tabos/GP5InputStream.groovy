@@ -156,12 +156,15 @@ class GP5InputStream extends DataInputStream {
                 keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature
                 repeatAlternative = read().with { bool(flags & 0x10) ? it : null }
                 timeSignature.beams = (bool(flags & 0x01) || bool(flags & 0x02)) ? (0..<4).collect { read() } : prevHeader.timeSignature.beams
-                if ((flags & 0x10) == 0) skipBytes 1
+                if ((flags & 0x10) == 0) skipBytes 1 // fixme what data?
                 tripletFeel = TripletFeel.from(read())
 
                 // gp5
                 direction = signsByMeasure[i] ?: null
                 fromDirection = fromSignsByMeasure[i] ?: null
+
+                // todo verify working
+                start = (i == 0) ? Duration.QUARTER_TIME : song.measureHeaders[i - 1].length()
 
                 prevHeader = measureHeader
             }
@@ -248,15 +251,10 @@ class GP5InputStream extends DataInputStream {
         skipBytes(version == v(5, 0, 0) ? 1 : 2)
 
         // read measures
-        int start = Duration.QUARTER_TIME
         song.measureHeaders.each { header ->
-            header.start = start
-            song.tracks*.measures*.add new Measure().tap { measure ->
-                measure.header = header
-                voices = (0..<MAX_VOICES).collect { new Voice().tap { voice ->
-                    voice.measure = measure
-                    beats = (0..readInt()).collect {new Beat().tap { beat ->
-                        beat.voice = voice
+            song.tracks*.measures*.add new Measure(header).tap { measure ->
+                voices = (0..<MAX_VOICES).collect { new Voice(measure).tap { voice ->
+                    beats = (0..readInt()).collect {new Beat(voice).tap { beat ->
                         final int beatFlags = readUnsignedByte()
                         status = BeatStatus.from(bool(beatFlags & 0x40) ? read() : 1)
                         duration = new Duration(
@@ -504,7 +502,6 @@ class GP5InputStream extends DataInputStream {
                     }}
                 }}
             }
-            start += header.length()
         }
 
         close()
