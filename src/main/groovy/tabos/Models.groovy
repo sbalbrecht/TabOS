@@ -84,14 +84,14 @@ class PageSetup {
     def dimensions = [width: 210, height: 297]
     def margin = [left: 10, top: 15, right: 10, bottom: 10]
     float scoreSizeProportion = 1.0
-    HeaderElement title = new HeaderElement('%title%')
-    HeaderElement subtitle = new HeaderElement('%subtitle%')
-    HeaderElement artist = new HeaderElement('%artist%')
-    HeaderElement album = new HeaderElement('%album%')
-    HeaderElement words = new HeaderElement('Words by %words%')
-    HeaderElement music = new HeaderElement('Music by %music%')
+    HeaderElement title = new HeaderElement('%TITLE%')
+    HeaderElement subtitle = new HeaderElement('%SUBTITLE%')
+    HeaderElement artist = new HeaderElement('%ARTIST%')
+    HeaderElement album = new HeaderElement('%ALBUM%')
+    HeaderElement words = new HeaderElement('Words by %WORDS%')
+    HeaderElement music = new HeaderElement('Music by %MUSIC%')
     HeaderElement wordsAndMusic = new HeaderElement('Words & Music by %WORDSMUSIC%')
-    HeaderElement copyright1 = new HeaderElement('Copyright %copyright%')
+    HeaderElement copyright1 = new HeaderElement('Copyright %COPYRIGHT%')
     HeaderElement copyright2 = new HeaderElement('All Rights Reserved - International Copyright Secured')
     HeaderElement pageNumber = new HeaderElement('Page %N%/%P%')
 }

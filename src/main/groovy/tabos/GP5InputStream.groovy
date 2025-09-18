@@ -1,6 +1,9 @@
 package tabos
 
-class GP5InputStream extends DataInputStream {
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
+class GP5InputStream extends FilterInputStream {
     static final int BEND_POSITION = 60
     static final int BEND_SEMITONE = 25
     static final VERSIONS = [
@@ -10,13 +13,11 @@ class GP5InputStream extends DataInputStream {
 
     GP5InputStream(InputStream stream) { super(stream) }
 
-    @Override
-    int read() throws IOException { super.read() }
-
     Song readSong() {
         final Song song = new Song()
 
         song.version = readFixedLengthStringField 30
+//        song.version = readFixedLengthStringField 30
         final Tuple version = VERSIONS[song.version]
 
         // todo if isClipboard copyClipboard?
@@ -68,28 +69,27 @@ class GP5InputStream extends DataInputStream {
         }
         song.tempoName = readFixedLengthStringField()
         song.tempo = readInt()
-        song.hideTempo = (version > v(5, 0, 0)) ? readBoolean() : false
-        song.key = KeySignature.from(read(), 0).tap {
-            // skipBytes 3
-            println "keySigBytes=${(new byte[3]).tap { read(it) }}"
-        }
+        song.hideTempo = version > v(5, 0, 0) ? readBoolean() : false
+        song.key = KeySignature.from(read(), 0)
 
-        int songOctave = read() // fixme where does this live
+        int songOctave = readInt() // fixme where does this live
 
         List<MidiChannel> midiChannels = (0..<64).collect { i ->
+            def toChannelShort = { data -> Math.min(Math.max((data << 3) - 1, -1), 32767) + 1 }
             new MidiChannel().tap {
                 channel = i
                 effectChannel = i
-                instrument = Math.max(readInt(), 0).with {
+                instrument = readInt().with {
                     it == -1 && channel == DEFAULT_PERCUSSION_CHANNEL ? 0 : it
                 }
-                volume = read()
-                balance = read()
-                chorus = read()
-                reverb = read()
-                phaser = read()
-                tremolo = read()
+                volume = toChannelShort(read())
+                balance = toChannelShort(read())
+                chorus = toChannelShort(read())
+                reverb = toChannelShort(read())
+                phaser = toChannelShort(read())
+                tremolo = toChannelShort(read())
                 bank = (short) (i == DEFAULT_PERCUSSION_CHANNEL ? 128 : 0)
+                skipBytes 2 // gp3 compatibility
             }
         }
 
@@ -153,7 +153,7 @@ class GP5InputStream extends DataInputStream {
                         b: readUnsignedByte()
                     ).tap { skipBytes 1 }
                 ) : null
-                keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature
+                keySignature = (bool(flags & 0x40)) ? KeySignature.from(read(), read()) : prevHeader.keySignature // fixme
                 repeatAlternative = read().with { bool(flags & 0x10) ? it : null }
                 timeSignature.beams = (bool(flags & 0x01) || bool(flags & 0x02)) ? (0..<4).collect { read() } : prevHeader.timeSignature.beams
                 if ((flags & 0x10) == 0) skipBytes 1 // fixme what data?
@@ -534,11 +534,13 @@ class GP5InputStream extends DataInputStream {
     }
 
     private String readFixedLengthStringField() throws IOException {
-        readFixedLengthStringField(readInt() - 1)
+        int fieldLength = readInt() - 1
+        readFixedLengthStringField(fieldLength)
     }
 
     private String readFixedLengthStringField(int fieldLength) {
-        readFixedLengthStringField(fieldLength, readUnsignedByte(), 'UTF-8')
+        int contentLength = read()
+        readFixedLengthStringField(fieldLength, contentLength, 'UTF-8')
     }
 
     private String readFixedLengthStringField(int fieldLength, int contentLength, String charset) throws IOException{
@@ -551,6 +553,36 @@ class GP5InputStream extends DataInputStream {
             e.printStackTrace()
             new String(bytes, 0, length)
         }
+    }
+
+    private int readInt() {
+        byte[] bytes = new byte[4]
+        read(bytes)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getInt()
+    }
+
+    private int readShort() {
+        byte[] bytes = new byte[2]
+        read(bytes)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getShort()
+    }
+
+    private int readDouble() {
+        byte[] bytes = new byte[8]
+        read(bytes)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getDouble()
+    }
+
+    private boolean readBoolean() {
+        read() != 0
+    }
+
+    private int readUnsignedByte() {
+        read() & 0xff
+    }
+
+    private void skipBytes(int n) {
+        read(new byte[n])
     }
 
     private static Tuple3 v(int v1, int v2, int v3) {
