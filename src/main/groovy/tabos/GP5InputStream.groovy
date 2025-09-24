@@ -337,13 +337,15 @@ class GP5InputStream extends FilterInputStream {
                             }
                             beat.effect.mixTableChange = bool(beatFlags & 0x10) ? new MixTableChange().tap {
                                 Closure<MixTableItem> toMixTableItem = { int value -> value >= 0 ? new MixTableItem(value) : null }
+
                                 instrument = toMixTableItem(read())
+
                                 rse = new RSEInstrument(
                                     instrument: readInt(),
                                     unknown: readInt(), // fixme ? mostly 1
                                     soundBank: readInt(),
-                                    effectNumber: (version == v(5, 0, 0)) ? readShort().tap { skip 1 } : readInt(),
-                                ).tap { if (version == v(5, 0, 0)) skipBytes 1 }
+                                    effectNumber: (version > v(5, 0, 0)) ? readInt() : readShort().tap { skip 2 },
+                                )
 
                                 volume = toMixTableItem(read())
                                 balance = toMixTableItem(read())
