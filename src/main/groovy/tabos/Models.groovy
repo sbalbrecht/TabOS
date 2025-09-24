@@ -152,10 +152,6 @@ class Tuplet {
     def convertTime(int time) { (time * times / enters) as int }
 
     def isSupported() { enters <= 3 && enters >= 1 && times <= 3 && times >= 1 }
-
-    static Tuplet fromFraction(Fraction frac) {
-        new Tuplet(frac.denominator, frac.numerator)
-    }
 }
 
 @AutoClone
@@ -185,24 +181,6 @@ class Duration {
     }
 
     int getIndex() { 32 - Integer.numberOfLeadingZeros(value) - 1 }
-
-    static Duration fromTime(int time) {
-        Fraction timeFrac = new Fraction(time, QUARTER_TIME * 4)
-        def exp = (Math.log(timeFrac as double) / Math.log(2)) as int
-        int value = (int) Math.pow(2, -exp)
-        def tuplet = Tuplet.fromFraction(timeFrac * value)
-
-        if (tuplet.isSupported()) return new Duration(value, false, tuplet)
-
-        timeFrac = new Fraction(time, QUARTER_TIME * 4) * new Fraction(2, 3)
-        exp = (Math.log(timeFrac as double) / Math.log(2)) as int
-        value = Math.pow(2, -exp) as int
-        tuplet = Tuplet.fromFraction(timeFrac * value)
-
-        if (tuplet.isSupported()) new Duration(value, true, tuplet)
-
-        throw new IllegalArgumentException("Cannot represent time $time as a duration")
-    }
 }
 
 record Color(int r, int g, int b) {
