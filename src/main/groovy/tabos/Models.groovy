@@ -150,8 +150,6 @@ class Tuplet {
     int enters = 1
     int times = 1
 
-    def convertTime(int time) { (time * times / enters) as int }
-
     def isSupported() { enters <= 3 && enters >= 1 && times <= 3 && times >= 1 }
 }
 
@@ -173,12 +171,10 @@ class Duration {
     boolean isDotted = false
     Tuplet tuplet = new Tuplet()
 
-    def getTime() {
-        tuplet.convertTime(
-            ((QUARTER_TIME * 4 / value) as int).with {
-                isDotted ? (it + it / 2) as int : it
-            }
-        )
+    int toTime() {
+        (((QUARTER_TIME * 4 / value) as int).with {
+            isDotted ? (it + it / 2) as int : it
+        } * tuplet.times / tuplet.enters) as int
     }
 
     int getIndex() { 32 - Integer.numberOfLeadingZeros(value) - 1 }
@@ -400,10 +396,10 @@ class Voice {
 @TupleConstructor
 class Beat {
     Voice voice
+    Integer start = 0
     List<Note> notes = []
     Duration duration = new Duration()
     String text
-    Integer start = 0 // fixme
     BeatEffect effect = new BeatEffect()
     Octave octave = Octave.NONE
     BeatDisplay display = new BeatDisplay()
@@ -470,7 +466,7 @@ class MeasureHeader {
     TripletFeel tripletFeel = TripletFeel.NONE
     String direction // todo enum?
     String fromDirection // todo enum?
-    int length() { timeSignature.numerator * timeSignature.denominator.time }
+    int length() { timeSignature.numerator * timeSignature.denominator.toTime() }
 }
 
 @TupleConstructor
@@ -551,9 +547,9 @@ class Measure {
     Track track
     MeasureHeader header
     MeasureClef clef = MeasureClef.TREBLE
-    List<Voice> voices
+    List<Voice> voices = []
     LineBreak lineBreak = LineBreak.NONE
-    boolean isEmpty() { return voices.every { voice -> voice.isEmpty }}
+    boolean isEmpty() { return voices.every { voice -> voice.isEmpty() }}
 }
 
 enum LineBreak {
