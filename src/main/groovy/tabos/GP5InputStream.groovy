@@ -32,7 +32,7 @@ class GP5InputStream extends FilterInputStream {
         song.notice = (0..<readInt()).collect { readFixedLengthStringField() }
         song.lyrics = new Lyrics(
             lyricTrackIndex: readInt(),
-            lines: (0..<5).collect { new LyricLine(
+            lines: (0..<Lyrics.MAX_LINES).collect { new LyricLine(
                 startingMeasure: readInt(),
                 line: readVariableLengthStringField()
             )}
@@ -73,13 +73,13 @@ class GP5InputStream extends FilterInputStream {
 
         readInt() // unused "octave"?
 
-        List<MidiChannel> midiChannels = (0..<64).collect { i ->
+        List<MidiChannel> midiChannels = (0..<MidiChannel.MAX_CHANNELS).collect { i ->
             def toChannelShort = { int data -> Math.min(Math.max((data << 3) - 1, -1), 32767) + 1 }
             new MidiChannel().tap {
-                channel = i
+                id = i
                 effectChannel = i
                 instrument = readInt().with {
-                    it == -1 && channel == DEFAULT_PERCUSSION_CHANNEL ? 0 : it
+                    (it == -1 && id == DEFAULT_PERCUSSION_CHANNEL) ? 0 : it
                 }
                 volume = toChannelShort(read())
                 balance = toChannelShort(read())
@@ -186,16 +186,11 @@ class GP5InputStream extends FilterInputStream {
                         value: tuning
                     )}[0..<stringCount]
                 }
-                port = readInt()
-                final int index = readInt() - 1
-                final int effectChannel = readInt() - 1
-                if (index in (0..<midiChannels.size())) {
-                    MidiChannel trackChannel = midiChannels[index]
-                    if (trackChannel.instrument < 0)
-                        trackChannel.instrument = 0
-                    if (trackChannel.channel != MidiChannel.DEFAULT_PERCUSSION_CHANNEL)
-                        trackChannel.effectChannel = effectChannel
-                    channel = trackChannel
+                channel = [readInt() - 1, readInt() - 1].with { int index, int effectChannel ->
+                    (index in (0..<midiChannels.size())) ? midiChannels[index].tap {
+                        instrument = Math.max(instrument, 0)
+                        it.effectChannel = (it.id == DEFAULT_PERCUSSION_CHANNEL) ? it.effectChannel : effectChannel
+                    } : null
                 }
                 fretCount = readInt()
                 offset = readInt()

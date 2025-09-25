@@ -111,8 +111,9 @@ class Lyrics {
 
 @TupleConstructor
 class MidiChannel {
+    static final int MAX_CHANNELS = 64
     static final int DEFAULT_PERCUSSION_CHANNEL = 9
-    int channel = 0
+    int id = 0
     int effectChannel = 1
     int instrument = 25
     int volume = 104
