@@ -225,7 +225,7 @@ class GP5InputStream extends FilterInputStream {
                 rse.autoAccentuation = Accentuation.from(read())
                 channel.bank = read()
                 rse.humanize = read()
-                skipBytes 0 // ?
+                skipBytes 28 // ?
                 rse.instrument = new RSEInstrument(
                     instrument: readInt(),
                     unknown: readInt(), // fixme ? mostly 1
