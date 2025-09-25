@@ -1,5 +1,7 @@
 package tabos
 
+import groovy.json.JsonOutput
+
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -42,7 +44,12 @@ class GP5InputStream extends FilterInputStream {
             volume: readInt().tap {
                 readInt() // unknown
             },
-            equalizer: new RSEEqualizer((0..<11).collect{ (-read() / 10) as float })
+            equalizer: new RSEEqualizer(
+                bands: [32, 60, 125, 250, 500, 1_000, 2_000, 4_000, 8_000, 16_000].collectEntries { int hz ->
+                    [hz, readFader()]
+                },
+                gain: readFader()
+            )
         ) : null
 
         song.pageSetup = new PageSetup().tap {
@@ -164,10 +171,11 @@ class GP5InputStream extends FilterInputStream {
             }
         }
 
+        if (version == v(5, 0, 0) || numTracks > 0) skipBytes 1
+
         song.tracks = (0..<numTracks).collect { trackIdx ->
-            if (trackIdx == 0 || version == v(5, 0, 0)) skipBytes(1) // Always 0
-            readUnsignedByte().with { int flags -> new Track().tap { track ->
-                track.song = song
+            new Track(song).tap { track ->
+                int flags = readUnsignedByte()
                 number = trackIdx + 1
                 isPercussionTrack = bool(flags & 0x01)
                 is12StringedGuitarTrack = bool(flags & 0x02)
@@ -216,25 +224,26 @@ class GP5InputStream extends FilterInputStream {
                 rse = new TrackRSE()
                 rse.autoAccentuation = Accentuation.from(read())
                 channel.bank = read()
-                rse.humanize = read().tap {
-                    readInt() // ?
-                    readInt() // ?
-                    readInt() // ?
-                    skipBytes 12 // ?
-                }
+                rse.humanize = read()
+                skipBytes 0 // ?
                 rse.instrument = new RSEInstrument(
                     instrument: readInt(),
                     unknown: readInt(), // fixme ? mostly 1
                     soundBank: readInt(),
-                    effectNumber: (version > v(5, 0, 0)) ? readInt() : readShort().tap { skip 1 }
+                    effectNumber: version > v(5, 0, 0) ? readInt() : readShort().tap { skipBytes 1 }
                 )
                 if (version > v(5, 0, 0)) {
-                    rse.equalizer = new RSEEqualizer((0..<4).collect{ (-read() / 10) as float })
+                    rse.equalizer = new RSEEqualizer(
+                        bands: [0, 1, 2].collectEntries { hz -> // fixme fill in frequencies
+                            [hz, readFader()]
+                        },
+                        gain: readFader()
+                    )
                     rse.instrument.effect = readFixedLengthStringField()
                     rse.instrument.effectCategory = readFixedLengthStringField()
                 }
                 track
-            }}
+            }
         }
 
         skipBytes(version > v(5, 0, 0) ? 1 : 2)
@@ -273,7 +282,7 @@ class GP5InputStream extends FilterInputStream {
                                     eleventh = ChordAlteration.from(read())
                                     firstFret = readInt()
                                     strings = (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()]
-                                    barres = read().with { barresCount ->
+                                    barres = read().with { int barresCount ->
                                         [
                                             (0..<5).collect { read() },
                                             (0..<5).collect { read() },
@@ -524,6 +533,10 @@ class GP5InputStream extends FilterInputStream {
 
     private static int unpackVelocity(int dyn) {
         Velocities.minVelocity + (Velocities.velocityIncrement * dyn) - Velocities.velocityIncrement
+    }
+
+    private float readFader() {
+        -read() / 10
     }
 
     private String readVariableLengthStringField() {

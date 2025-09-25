@@ -188,6 +188,7 @@ record Color(int r, int g, int b) {
     static final Color RED = new Color(255, 255, 255)
 }
 
+@TupleConstructor
 class Track {
     Song song
     int number = 1
@@ -228,14 +229,10 @@ class TrackSettings {
     boolean extendRhythmic = false
 }
 
+@TupleConstructor
 class RSEEqualizer {
-    // 10 band eq: 32, 60, 125, 250, 500, 1k, 2k, 4k, 8k, 16k, PRE
-    List<Float> knobs = [0.0] * 10
-    Float gain = 0.0f
-    RSEEqualizer(List<Float> values) {
-        knobs = values[0..<-1]
-        gain = values[-1]
-    }
+    Map<Integer, Float> bands = [:]
+    float gain = 0f
 }
 
 @TupleConstructor
