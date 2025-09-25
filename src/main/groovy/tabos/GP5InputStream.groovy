@@ -1,7 +1,5 @@
 package tabos
 
-import groovy.json.JsonOutput
-
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -253,7 +251,8 @@ class GP5InputStream extends FilterInputStream {
             song.tracks.each { track ->
                 track.measures << new Measure(track, header).tap { measure ->
                     voices = (0..<MAX_VOICES).collect { voiceIdx -> new Voice(measure).tap { voice ->
-                        beats = (0..readInt()).collect { beatIdx -> new Beat(voice).tap { beat ->
+//                        beats = (0..readInt()).collect { beatIdx -> new Beat(voice).tap { beat ->
+                        (0..readInt()).each { beatIdx -> beats << new Beat(voice).tap { beat ->
                             final int beatFlags = readUnsignedByte()
                             status = BeatStatus.from(bool(beatFlags & 0x40) ? read() : BeatStatus.NORMAL.value)
                             duration = new Duration(
@@ -299,7 +298,6 @@ class GP5InputStream extends FilterInputStream {
                                     strings = firstFret ? (0..<7).collect { i -> new GuitarString(i + 1, readInt()) }[0..<track.strings.size()] : [new GuitarString(-1, -1)] * track.strings.size()
                                 }
                             } : null
-                            println "measure=$header.number, track=$track.number voice=$voiceIdx beat=$beatIdx"
                             text = bool(beatFlags & 0x04) ? readFixedLengthStringField() : null
                             // beat effects
                             if (bool(beatFlags & 0x08)) {
@@ -409,8 +407,8 @@ class GP5InputStream extends FilterInputStream {
                                 effect.heavyAccentuatedNote = bool(noteFlags & 0x02)
                                 effect.ghostNote = bool(noteFlags & 0x04)
                                 effect.accentuatedNote = bool(noteFlags & 0x40)
-                                effect.leftHandFinger = bool(noteFlags & 0x80) ? Fingering.from(read()) : null
-                                effect.rightHandFinger = bool(noteFlags & 0x80) ? Fingering.from(read()) : null
+                                effect.leftHandFinger = bool(noteFlags & 0x80) ? Fingering.from(read()) : Fingering.OPEN
+                                effect.rightHandFinger = bool(noteFlags & 0x80) ? Fingering.from(read()) : Fingering.OPEN
                                 durationPercent = bool(noteFlags & 0x01) ? readDouble() : 1.0
                                 swapAccidentals = bool(read() & 0x02)
                                 if (bool(noteFlags & 0x08)) {
@@ -456,7 +454,7 @@ class GP5InputStream extends FilterInputStream {
                                             0x08: SlideType.OUT_UPWARDS,
                                             0x10: SlideType.INTO_FROM_BELOW,
                                             0x20: SlideType.INTO_FROM_ABOVE
-                                        ].findAll { mask, ignored -> bool(slideFlags & mask) }.values()
+                                        ].findAll { mask, ignored -> bool(slideFlags & mask) }.values().toList()
                                     } : []
                                     effect.harmonic = bool(noteEffectFlags & 0x1000) ? switch (read()) {
                                         case 1 -> new NaturalHarmonic()
@@ -499,6 +497,12 @@ class GP5InputStream extends FilterInputStream {
                             display.beamDirection = bool(gp5beatFlags & 0x0002) ? VoiceDirection.DOWN : bool(gp5beatFlags & 0x0008) ? VoiceDirection.UP : VoiceDirection.NONE
                             display.tupletBracket = bool(gp5beatFlags & 0x0200) ? TupletBracket.START : bool(gp5beatFlags & 0x0400) ? TupletBracket.END : TupletBracket.NONE
                             display.breakSecondary = bool(gp5beatFlags & 0x0800) ? readBoolean() : false
+
+                            // fixme debugging
+                            println "track=$track.number measure=$header.number voice=$voiceIdx beat=$beatIdx"
+                            beat.notes.each {
+                                println "string=$it.string fret=$it.value"
+                            }
                         }}
                     }}
                 }
@@ -510,7 +514,7 @@ class GP5InputStream extends FilterInputStream {
         song
     }
 
-    private static int readNoteValue(Note note) {
+    private int readNoteValue(Note note) {
         int fret = read()
         int value = (note.type == NoteType.TIE) ? {
             Measure parentMeasure = note.beat.voice.measure

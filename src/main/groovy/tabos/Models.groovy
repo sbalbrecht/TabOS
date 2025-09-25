@@ -403,14 +403,14 @@ class Beat {
     List<Note> notes = []
     Duration duration = new Duration()
     String text
-    Integer start
+    Integer start = 0 // fixme
     BeatEffect effect = new BeatEffect()
     Octave octave = Octave.NONE
     BeatDisplay display = new BeatDisplay()
     BeatStatus status = BeatStatus.EMPTY
 
     def getStartInMeasure() {
-        start - voice.measure.start
+        start - voice.measure.header.start
     }
 
     def hasVibrato() {
@@ -418,7 +418,7 @@ class Beat {
     }
 
     def hasHarmonic() {
-        notes.find { note -> note.effect.isHarmonic }?.effect?.harmonic
+        notes.find { note -> note.effect.harmonic }?.effect?.harmonic
     }
 }
 
@@ -512,12 +512,7 @@ class NoteEffect {
     TrillEffect trill
     boolean vibrato = false
 
-    boolean getIsBend() { bend != null && !bend.points.isEmpty() }
-    boolean getIsHarmonic() { harmonic != null }
-    boolean getIsGrace() { grace != null }
-    boolean getIsTrill() { trill != null }
-    boolean getIsTremoloPicking() { tremoloPicking != null }
-    boolean getIsFingering() { leftHandFinger.value > -1 || rightHandFinger.value > -1 }
+    boolean getIsFingering() { leftHandFinger?.value > -1 || rightHandFinger?.value > -1 }
     boolean isDefault() {
         new NoteEffect().with { it ->
             this.leftHandFinger == it.leftHandFinger
@@ -537,7 +532,7 @@ class NoteEffect {
     }
 }
 
-
+@TupleConstructor
 class Note {
     Beat beat
     int string = 0
