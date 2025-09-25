@@ -257,9 +257,9 @@ class GP5InputStream extends FilterInputStream {
                     measure.voices << voice
 
                     int numBeats = readInt()
-                    println "numBeats=$numBeats" // fixme debugging
+                    println "numBeats=$numBeats start=$start" // fixme debugging
 
-                    (0..<numBeats).each { beatIdx ->
+                    for (int beatIdx : (0..<numBeats)) {
                         def beat = voice.beats.reverse().find {
                             it.start == start
                         } ?: new Beat(voice, start).tap {
@@ -516,7 +516,7 @@ class GP5InputStream extends FilterInputStream {
                         beat.display.breakSecondary = bool(gp5beatFlags & 0x0800) ? readBoolean() : false
 
                         // fixme debugging
-                        println "track=$track.number measure=$header.number voice=$voiceIdx beat=$beatIdx start=$start duration=${beat.duration.toTime()}"
+                        println "track=$track.number measure=$header.number voice=$voiceIdx beat=$beatIdx status=$beat.status duration=${beat.duration.toTime()} new_start=$start"
                         if (beat.effect.chord) println "chord=$beat.effect.chord.name"
                         beat.notes.each {
                             println "string=$it.string fret=$it.value"
