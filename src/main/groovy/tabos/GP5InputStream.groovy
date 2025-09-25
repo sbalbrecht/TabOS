@@ -397,21 +397,18 @@ class GP5InputStream extends FilterInputStream {
                                 it
                             } : null
 
-                            // read notes
-                            final int stringFlags = readUnsignedByte()
-                            notes = track.strings.findAll {
-                                stringFlags & 1 << (7 - it.number())
-                            }.collect { string -> new Note().tap { Note note ->
+                            final int playedStringFlags = readUnsignedByte()
+                            notes = track.strings.findAll { string ->
+                                playedStringFlags & (1 << (7 - string.number()))
+                            }.collect { string -> new Note(beat, string.number()).tap { Note note ->
                                 int noteFlags = readUnsignedByte()
-                                note.beat = beat
-                                note.string = string.number()
+                                type = bool(noteFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
+                                velocity = bool(noteFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
+                                value = bool(noteFlags & 0x20) ? readNoteValue(note) : 0
                                 effect = new NoteEffect()
                                 effect.heavyAccentuatedNote = bool(noteFlags & 0x02)
                                 effect.ghostNote = bool(noteFlags & 0x04)
                                 effect.accentuatedNote = bool(noteFlags & 0x40)
-                                type = bool(noteFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
-                                velocity = bool(noteFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
-                                value = bool(noteFlags & 0x20) ? readNoteValue(note) : 0
                                 effect.leftHandFinger = bool(noteFlags & 0x80) ? Fingering.from(read()) : null
                                 effect.rightHandFinger = bool(noteFlags & 0x80) ? Fingering.from(read()) : null
                                 durationPercent = bool(noteFlags & 0x01) ? readDouble() : 1.0

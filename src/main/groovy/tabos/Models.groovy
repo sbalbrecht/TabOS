@@ -537,11 +537,12 @@ class NoteEffect {
     }
 }
 
+
 class Note {
     Beat beat
+    int string = 0
     int value = 0
     int velocity = Velocities.defaultVelocity
-    int string = 0
     NoteEffect effect = new NoteEffect()
     double durationPercent = 1.0f
     boolean swapAccidentals = false
