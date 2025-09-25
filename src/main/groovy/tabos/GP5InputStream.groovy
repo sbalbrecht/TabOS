@@ -259,7 +259,7 @@ class GP5InputStream extends FilterInputStream {
                     int numBeats = readInt()
                     println "numBeats=$numBeats" // fixme debugging
 
-                    (0..numBeats).each { beatIdx ->
+                    (0..<numBeats).each { beatIdx ->
                         def beat = voice.beats.reverse().find {
                             it.start == start
                         } ?: new Beat(voice, start).tap {
