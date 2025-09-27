@@ -43,10 +43,8 @@ class GP5InputStream extends FilterInputStream {
                 readInt() // unknown
             },
             equalizer: new RSEEqualizer(
-                bands: [32, 60, 125, 250, 500, 1_000, 2_000, 4_000, 8_000, 16_000].collectEntries { int hz ->
-                    [hz, readFader()]
-                },
-                gain: readFader()
+                [32, 60, 125, 250, 500, 1_000, 2_000, 4_000, 8_000, 16_000].collectEntries { int hz -> [hz, readFader()] },
+                readFader()
             )
         ) : null
 
@@ -232,10 +230,8 @@ class GP5InputStream extends FilterInputStream {
                 )
                 if (version > v(5, 0, 0)) {
                     rse.equalizer = new RSEEqualizer(
-                        bands: [0, 1, 2].collectEntries { hz -> // fixme fill in frequencies
-                            [hz, readFader()]
-                        },
-                        gain: readFader()
+                        [0, 1, 2].collectEntries { hz -> [hz, readFader()] },  // fixme fill in frequencies
+                        readFader()
                     )
                     rse.instrument.effect = readFixedLengthStringField()
                     rse.instrument.effectCategory = readFixedLengthStringField()
@@ -256,10 +252,7 @@ class GP5InputStream extends FilterInputStream {
                     Voice voice = new Voice(measure)
                     measure.voices << voice
 
-                    int numBeats = readInt()
-                    println "numBeats=$numBeats start=$start" // fixme debugging
-
-                    for (int beatIdx : (0..<numBeats)) {
+                    for (int beatIdx : (0..<readInt())) {
                         def beat = voice.beats.reverse().find {
                             it.start == start
                         } ?: new Beat(voice, start).tap {
@@ -413,7 +406,7 @@ class GP5InputStream extends FilterInputStream {
                         final int playedStringFlags = readUnsignedByte()
                         beat.notes.addAll track.strings.findAll { string ->
                             playedStringFlags & (1 << (7 - string.number()))
-                        }.collect { string -> new Note(beat, string.number()).tap { Note note ->
+                        }.collect { playedString -> new Note(beat, playedString.number()).tap { Note note ->
                             int noteFlags = readUnsignedByte()
                             type = bool(noteFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
                             velocity = bool(noteFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
@@ -514,15 +507,9 @@ class GP5InputStream extends FilterInputStream {
                         beat.display.beamDirection = bool(gp5beatFlags & 0x0002) ? VoiceDirection.DOWN : bool(gp5beatFlags & 0x0008) ? VoiceDirection.UP : VoiceDirection.NONE
                         beat.display.tupletBracket = bool(gp5beatFlags & 0x0200) ? TupletBracket.START : bool(gp5beatFlags & 0x0400) ? TupletBracket.END : TupletBracket.NONE
                         beat.display.breakSecondary = bool(gp5beatFlags & 0x0800) ? readBoolean() : false
-
-                        // fixme debugging
-                        println "track=$track.number measure=$header.number voice=$voiceIdx beat=$beatIdx status=$beat.status duration=${beat.duration.toTime()} new_start=$start"
-                        if (beat.effect.chord) println "chord=$beat.effect.chord.name"
-                        beat.notes.each {
-                            println "string=$it.string fret=$it.value"
-                        }
                     }
                 }
+                measure.lineBreak = LineBreak.from(read())
             }
         }
 
