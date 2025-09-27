@@ -130,7 +130,7 @@ class GP5InputStream extends FilterInputStream {
         final int numMeasures = readInt()
         final int numTracks = readInt()
 
-        (0..<numMeasures).each { i ->
+        for (int i = 0; i < numMeasures; i++) {
             if (i > 0) skipBytes 1
             song.addMeasureHeader new MeasureHeader().tap { measureHeader ->
                 MeasureHeader prevHeader = (i == 0) ? null : song.measureHeaders[i - 1]
@@ -162,7 +162,6 @@ class GP5InputStream extends FilterInputStream {
                 direction = signsByMeasure[i] ?: null
                 fromDirection = fromSignsByMeasure[i] ?: null
 
-                // todo verify working
                 start = (i == 0) ? Duration.QUARTER_TIME : prevHeader.start + measureHeader.length()
             }
         }
@@ -212,7 +211,7 @@ class GP5InputStream extends FilterInputStream {
                     forceChannels: bool(settingsFlags & 0x020),
                     diagramList: bool(settingsFlags & 0x040),
                     diagramsInScore: bool(settingsFlags & 0x080),
-                    unknown: bool(settingsFlags & 0x100), // fixme 0x0100 ?
+                    unknown: bool(settingsFlags & 0x100), // ?
                     autoLetRing: bool(settingsFlags & 0x200),
                     autoBrush: bool(settingsFlags & 0x400),
                     extendRhythmic: bool(settingsFlags & 0x800),
@@ -224,7 +223,7 @@ class GP5InputStream extends FilterInputStream {
                 skipBytes 28 // ?
                 rse.instrument = new RSEInstrument(
                     instrument: readInt(),
-                    unknown: readInt(), // fixme ? mostly 1
+                    unknown: readInt(), // Mostly 1?
                     soundBank: readInt(),
                     effectNumber: version > v(5, 0, 0) ? readInt() : readShort().tap { skipBytes 1 }
                 )
@@ -332,14 +331,18 @@ class GP5InputStream extends FilterInputStream {
                                 }
                             }
                             if (bool(beatEffectFlags & 0x40)) {
-                                beat.effect.stroke = [read(), read()].with { strokeUp, strokeDown ->
-                                    if (strokeUp > 0) new BeatStroke(
-                                        direction: BeatStrokeDirection.DOWN, // swapped
-                                        value: strokeUp // fixme map to duration
-                                    ) else if (strokeDown > 0) new BeatStroke(
-                                        direction: BeatStrokeDirection.UP, // swapped
-                                        value: strokeDown // fixme map to duration
-                                    ) else null
+                                beat.effect.stroke = [read(), read()].with { int strokeUp, int strokeDown ->
+                                    (strokeUp < 1 && strokeDown < 1) ? null : new BeatStroke(
+                                        direction: strokeUp > 0 ? BeatStrokeDirection.UP : BeatStrokeDirection.DOWN,
+                                        value: [
+                                            Duration.HUNDRED_TWENTY_EIGHTH,
+                                            Duration.SIXTY_FOURTH,
+                                            Duration.THIRTY_SECOND,
+                                            Duration.SIXTEENTH,
+                                            Duration.EIGHTH,
+                                            Duration.QUARTER
+                                        ][(strokeUp > 0 ? strokeUp : strokeDown) - 1]
+                                    ).tap { swapDirection() } // gp5
                                 }
                             }
                             beat.effect.hasRasgueado = bool(beatEffectFlags & 0x100)
@@ -352,7 +355,7 @@ class GP5InputStream extends FilterInputStream {
 
                             rse = new RSEInstrument(
                                 instrument: readInt(),
-                                unknown: readInt(), // fixme ? mostly 1
+                                unknown: readInt(), // Mostly 1
                                 soundBank: readInt(),
                                 effectNumber: (version > v(5, 0, 0)) ? readInt() : readShort().tap { skip 2 },
                             )
@@ -409,7 +412,7 @@ class GP5InputStream extends FilterInputStream {
                         }.collect { playedString -> new Note(beat, playedString.number()).tap { Note note ->
                             int noteFlags = readUnsignedByte()
                             type = bool(noteFlags & 0x20) ? NoteType.from(read()) : NoteType.NORMAL
-                            velocity = bool(noteFlags & 0x10) ? unpackVelocity(read()) : Velocities.defaultVelocity
+                            velocity = bool(noteFlags & 0x10) ? readVelocity() : Velocities.defaultVelocity
                             value = bool(noteFlags & 0x20) ? readNoteValue(note) : 0
                             effect = new NoteEffect()
                             effect.heavyAccentuatedNote = bool(noteFlags & 0x02)
@@ -437,7 +440,7 @@ class GP5InputStream extends FilterInputStream {
                                 ).with { bend -> bend.points ? bend : null } : null
                                 effect.grace = bool(noteEffectFlags & 0x0010) ? new GraceEffect().tap {
                                     fret = read()
-                                    velocity = unpackVelocity(read())
+                                    velocity = readVelocity()
                                     transition = GraceEffectTransition.from(read())
                                     duration = 1 << (7 - read())
                                     int graceFlags = readUnsignedByte()
@@ -513,8 +516,6 @@ class GP5InputStream extends FilterInputStream {
             }
         }
 
-        close()
-
         song
     }
 
@@ -536,8 +537,8 @@ class GP5InputStream extends FilterInputStream {
         value in (0..<100) ? value : 0
     }
 
-    private static int unpackVelocity(int dyn) {
-        Velocities.minVelocity + (Velocities.velocityIncrement * dyn) - Velocities.velocityIncrement
+    private int readVelocity() {
+        Velocities.minVelocity + (Velocities.velocityIncrement * read()) - Velocities.velocityIncrement
     }
 
     private float readFader() {

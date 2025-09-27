@@ -450,7 +450,6 @@ class Marker {
     Color color = Color.RED
 }
 
-@TupleConstructor
 class MeasureHeader {
     Song song
     RepeatGroup repeatGroup // fixme is this right
@@ -665,8 +664,8 @@ class BeatEffect {
 class BeatStroke {
     BeatStrokeDirection direction = BeatStrokeDirection.NONE
     int value = 0
-    def swapDirection() {
-        return switch(direction) {
+    void swapDirection() {
+        direction = switch(direction) {
             case BeatStrokeDirection.UP -> BeatStrokeDirection.DOWN
             case BeatStrokeDirection.DOWN -> BeatStrokeDirection.UP
             default -> direction
