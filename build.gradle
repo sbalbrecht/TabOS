@@ -1,6 +1,7 @@
 plugins {
     id 'application'
     id 'groovy'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 group = 'dev.urth'
@@ -16,8 +17,16 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
 
+javafx {
+    version = '25'
+    modules = [ 'javafx.controls' ]
+}
+
 application {
     mainClass = 'tabos.Main'
+    applicationDefaultJvmArgs = [
+        '--enable-native-access=javafx.graphics',
+    ]
 }
 
 test {
