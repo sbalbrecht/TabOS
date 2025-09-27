@@ -450,9 +450,10 @@ class Marker {
     Color color = Color.RED
 }
 
+@TupleConstructor
 class MeasureHeader {
     Song song
-    RepeatGroup repeatGroup // fixme is this right
+    RepeatGroup repeatGroup
     int number
     int start
     boolean hasDoubleBar = false
@@ -463,8 +464,8 @@ class MeasureHeader {
     int repeatAlternative = 0
     int repeatClose = -1
     TripletFeel tripletFeel = TripletFeel.NONE
-    String direction // todo enum?
-    String fromDirection // todo enum?
+    String direction
+    String fromDirection
     int length() { timeSignature.numerator * timeSignature.denominator.toTime() }
 }
 
