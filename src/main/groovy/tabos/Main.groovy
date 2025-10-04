@@ -15,7 +15,7 @@ class Main extends Application {
     @Override
     void start(Stage stage) {
         stage.title = 'TabOS'
-        stage.scene = new Scene(load('MainView.fxml'), 1200, 800)
+        stage.scene = new Scene(load('/MainView.fxml'), 1200, 800)
         stage.show()
     }
 }
