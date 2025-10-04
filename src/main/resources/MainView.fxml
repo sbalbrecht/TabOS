@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane
+        xmlns="http://javafx.com/javafx"
+        xmlns:fx="http://javafx.com/fxml"
+        fx:controller="tabos.MainViewController">
+
+    <!-- Menu Bar -->
+    <top>
+        <VBox>
+            <MenuBar fx:id="menuBar">
+                <Menu text="File">
+                    <MenuItem text="New" onAction="#handleNew"/>
+                    <MenuItem text="Open" onAction="#handleOpen"/>
+                    <MenuItem text="Save" onAction="#handleSave"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Exit" onAction="#handleExit"/>
+                </Menu>
+                <Menu text="Edit">
+                    <MenuItem text="Undo" onAction="#handleUndo"/>
+                    <MenuItem text="Redo" onAction="#handleRedo"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Cut" onAction="#handleCut"/>
+                    <MenuItem text="Copy" onAction="#handleCopy"/>
+                    <MenuItem text="Paste" onAction="#handlePaste"/>
+                </Menu>
+            </MenuBar>
+
+            <!-- Toolbar -->
+            <ToolBar fx:id="toolbar">
+                <Button text="Play" onAction="#handlePlay"/>
+                <Button text="Stop" onAction="#handleStop"/>
+                <Button text="Record" onAction="#handleRecord"/>
+            </ToolBar>
+        </VBox>
+    </top>
+
+    <!-- Main Content Area with Split Panes -->
+    <center>
+        <SplitPane fx:id="verticalSplit" orientation="VERTICAL" dividerPositions="0.75">
+
+            <!-- Top: Horizontal Split (Sidebar | Editor) -->
+            <SplitPane fx:id="horizontalSplit" dividerPositions="0.2">
+
+                <!-- Sidebar -->
+                <VBox minWidth="150" prefWidth="250">
+                    <TabPane fx:id="sidebarTabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                        <Tab text="Project">
+                            <TreeView fx:id="projectTree"/>
+                        </Tab>
+                        <Tab text="Properties">
+                            <VBox fx:id="propertiesBox" spacing="10" style="-fx-padding: 10;"/>
+                        </Tab>
+                        <Tab text="Instruments">
+                            <ListView fx:id="instrumentList"/>
+                        </Tab>
+                    </TabPane>
+                </VBox>
+
+                <!-- Main Editor -->
+                <StackPane>
+                    <ScrollPane fitToWidth="true">
+                        <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;"/>
+                    </ScrollPane>
+                </StackPane>
+
+            </SplitPane>
+
+            <!-- Bottom Pane -->
+            <VBox minHeight="100" prefHeight="200">
+                <TabPane fx:id="bottomTabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                    <Tab text="Console">
+                        <TextArea fx:id="console" editable="false"/>
+                    </Tab>
+                    <Tab text="Timeline">
+                        <ScrollPane>
+                            <HBox fx:id="timeline" spacing="5" style="-fx-padding: 10;"/>
+                        </ScrollPane>
+                    </Tab>
+                    <Tab text="Mixer">
+                        <HBox fx:id="mixer" spacing="10" style="-fx-padding: 10;"/>
+                    </Tab>
+                </TabPane>
+            </VBox>
+
+        </SplitPane>
+    </center>
+
+</BorderPane>

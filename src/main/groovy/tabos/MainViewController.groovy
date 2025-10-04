@@ -1,0 +1,139 @@
+package tabos
+
+import javafx.fxml.FXML
+import javafx.fxml.Initializable
+import javafx.scene.control.*
+import javafx.scene.layout.*
+import javafx.geometry.Orientation
+
+class MainViewController implements Initializable {
+    @FXML private MenuBar menuBar
+    @FXML private ToolBar toolbar
+    @FXML private SplitPane verticalSplit
+    @FXML private SplitPane horizontalSplit
+    @FXML private TabPane sidebarTabs
+    @FXML private TabPane bottomTabs
+    @FXML private TreeView<String> projectTree
+    @FXML private VBox propertiesBox
+    @FXML private ListView<String> instrumentList
+    @FXML private TextArea console
+    @FXML private HBox timeline
+    @FXML private HBox mixer
+    @FXML private VBox scoreArea
+
+    @Override
+    void initialize(URL location, ResourceBundle resources) {
+        menuBar.useSystemMenuBarProperty().set(true)
+
+        TreeItem<String> root = new TreeItem<>("Project Root")
+        root.expanded = true
+        root.children.addAll(
+            new TreeItem<>("Songs"),
+            new TreeItem<>("Tracks"),
+            new TreeItem<>("Instruments")
+        )
+        projectTree.root = root
+        propertiesBox.children.addAll(
+            new Label("Tempo: 120"),
+            new Label("Time Signature: 4/4"),
+            new Label("Key: C Major")
+        )
+
+        instrumentList.items.addAll("Guitar", "Bass", "Drums", "Piano")
+        console.text = "Console output...\n"
+
+        (0..50).each { i ->
+            timeline.children.add(new Label("|$i"))
+        }
+
+        ["Track 1", "Track 2", "Track 3", "Master"].each { track ->
+            VBox channel = new VBox(5)
+            channel.children.addAll(
+                new Label(track),
+                new Slider(0, 100, 75).tap {
+                    it.orientation = Orientation.VERTICAL
+                    it.prefHeight = 150
+                },
+                new Label("75%")
+            )
+            mixer.children.add(channel)
+        }
+
+        (1..5).each { trackNum ->
+            VBox staff = new VBox(2)
+            staff.children.add(new Label("Track $trackNum"))
+
+            (0..4).each {
+                Region line = new Region()
+                line.prefHeight = 1
+                line.style = "-fx-background-color: black;"
+                staff.children.add(line)
+            }
+
+            scoreArea.children.add(staff)
+        }
+
+        horizontalSplit.setDividerPositions(0.2)
+        verticalSplit.setDividerPositions(0.75)
+    }
+
+    @FXML
+    private void handleNew() {
+        println("New file")
+    }
+
+    @FXML
+    private void handleOpen() {
+        println("Open file")
+    }
+
+    @FXML
+    private void handleSave() {
+        println("Save file")
+    }
+
+    @FXML
+    private void handleExit() {
+        System.exit(0)
+    }
+
+    @FXML
+    private void handleUndo() {
+        println("Undo")
+    }
+
+    @FXML
+    private void handleRedo() {
+        println("Redo")
+    }
+
+    @FXML
+    private void handleCut() {
+        println("Cut")
+    }
+
+    @FXML
+    private void handleCopy() {
+        println("Copy")
+    }
+
+    @FXML
+    private void handlePaste() {
+        println("Paste")
+    }
+
+    @FXML
+    private void handlePlay() {
+        println("Play")
+    }
+
+    @FXML
+    private void handleStop() {
+        println("Stop")
+    }
+
+    @FXML
+    private void handleRecord() {
+        println("Record")
+    }
+}
