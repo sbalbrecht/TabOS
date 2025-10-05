@@ -1,6 +1,6 @@
 plugins {
-    id 'application'
     id 'groovy'
+    id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
@@ -13,13 +13,16 @@ repositories {
 
 dependencies {
     implementation 'org.apache.groovy:groovy-all:4.0.28'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    implementation 'ch.qos.logback:logback-classic:1.5.19'
+
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 javafx {
     version = '25'
-    modules = [ 'javafx.controls', 'javafx.fxml' ]
+    modules = ['javafx.controls', 'javafx.fxml']
 }
 
 application {
@@ -31,4 +34,7 @@ application {
 
 test {
     useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
 }

@@ -1,5 +1,7 @@
 package tabos
 
+import javafx.scene.Parent
+
 import static tabos.Loader.load
 
 import javafx.application.Application
@@ -21,7 +23,7 @@ class Main extends Application {
 }
 
 class Loader {
-    static <T> T load(String fxml) {
+    static Parent load(String fxml) {
         new FXMLLoader(Main.getResource(fxml)).load()
     }
 }
