@@ -1,4 +1,4 @@
-package tabos
+package tabos.config
 
 import java.lang.annotation.*
 

@@ -1,4 +1,4 @@
-package tabos
+package tabos.config
 
 @Config class AppConfig {
     UiConfig ui = new UiConfig()

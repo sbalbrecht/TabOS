@@ -3,6 +3,9 @@ package tabos
 import groovy.util.logging.Slf4j
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import tabos.config.AppConfig
+import tabos.config.Configurations
+import tabos.config.UiWindowConfig
 
 @Slf4j
 class ConfigurationsTests {
@@ -45,6 +48,6 @@ class ConfigurationsTests {
 
         Configurations.shutdown()
 
-        println Configurations.storageFile.text
+        println Configurations.configFile.text
     }
 }

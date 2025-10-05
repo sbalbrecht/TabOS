@@ -1,4 +1,4 @@
-package tabos
+package tabos.config
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
@@ -10,12 +10,12 @@ import java.lang.reflect.*
 @Slf4j
 class Configurations {
     private static final ScheduledExecutorService saveExecutor = Executors.newSingleThreadScheduledExecutor()
-    private static final configurationTypes = [int, Integer, long, Long, double, Double, float, Float, boolean, Boolean, short, Short, byte, Byte, List, Map, String, Enum]
+    private static final propertyTypes = [int, Integer, long, Long, double, Double, float, Float, boolean, Boolean, short, Short, byte, Byte, List, Map, String, Enum]
     private static final Map<Class, ConfigurationContext> contextsByClass = [:]
     private static ConfigurationContext rootContext
     static final List subscriptions = []
-    static File storageDir
-    static File storageFile
+    static File configDir
+    static File configFile
 
     static <T> T get(Class<T> configClass = AppConfig) {
         if (contextsByClass.isEmpty()) init()
@@ -26,8 +26,8 @@ class Configurations {
         File configDir = new File((System.properties.'tabos.home' ?: System.properties.'user.home') as String),
         String configFileName = '.tabos.json'
     ) {
-        storageDir = configDir
-        storageFile = new File(storageDir, configFileName)
+        this.configDir = configDir
+        configFile = new File(Configurations.configDir, configFileName)
         buildContexts().tap {
             rootContext = it
             load()
@@ -54,7 +54,7 @@ class Configurations {
         contextsByClass[instance.class] = context
         instance.class.declaredFields.findAll { !it.synthetic }.each { field ->
             field.accessible = true
-            if (field.type in configurationTypes) {
+            if (field.type in propertyTypes) {
                 context.properties[field.name] = new PropertyInfo().tap {
                     it.field = field
                     it.path = namespace ? namespace + [field.name] : [field.name]
@@ -72,21 +72,21 @@ class Configurations {
     }
 
     static void save() {
-        if (!storageDir.exists()) storageDir.mkdirs()
+        if (!configDir.exists()) configDir.mkdirs()
         try {
-            storageFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(rootContext.instance))
-            log.info "Saved config to $storageFile"
+            configFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(rootContext.instance))
+            log.info "Saved config to $configFile"
         } catch (Exception e) {
-            log.error "Error saving configuration to $storageFile", e
+            log.error "Error saving configuration to $configFile", e
         }
     }
 
     static void load() {
-        if (!storageFile.exists()) save()
+        if (!configFile.exists()) save()
         try {
-            rootContext.loadFromJson(new JsonSlurper().parse(storageFile) as Map)
+            rootContext.loadFromJson(new JsonSlurper().parse(configFile) as Map)
         } catch (Exception e) {
-            log.warn "Failed to load configuration from $storageFile. Using default values.", e
+            log.warn "Failed to load configuration from $configFile. Using default values.", e
         }
     }
 

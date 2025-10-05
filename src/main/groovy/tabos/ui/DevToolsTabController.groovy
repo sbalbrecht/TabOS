@@ -1,4 +1,4 @@
-package tabos
+package tabos.ui
 
 import groovy.json.JsonOutput
 import javafx.beans.property.SimpleStringProperty
@@ -7,6 +7,7 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.text.Font
 import javafx.scene.text.Text
+import tabos.config.Configurations
 
 class DevToolsTabController implements Initializable {
     @FXML private Text settings

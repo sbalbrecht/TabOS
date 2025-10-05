@@ -1,7 +1,8 @@
-package tabos
+package tabos.ui
 
 import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.value.ChangeListener
+import tabos.TabOS
 
 class BindUtil {
     static def prop(Object o, String property) {

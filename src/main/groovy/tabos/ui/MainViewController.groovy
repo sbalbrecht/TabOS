@@ -1,4 +1,4 @@
-package tabos
+package tabos.ui
 
 import javafx.application.Platform
 import javafx.fxml.FXML
@@ -6,6 +6,8 @@ import javafx.fxml.Initializable
 import javafx.scene.control.*
 import javafx.scene.layout.*
 import javafx.geometry.Orientation
+import tabos.config.AppConfig
+import tabos.config.Configurations
 
 class MainViewController implements Initializable {
     private static final AppConfig config = Configurations.get()

@@ -1,14 +1,13 @@
 package tabos
 
+import static tabos.io.Loader.load
+
 import groovy.util.logging.Slf4j
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
-import javafx.scene.Parent
-
-import static tabos.Loader.load
-
+import tabos.config.AppConfig
+import tabos.config.Configurations
 import javafx.application.Application
-import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.stage.Stage
 
@@ -42,11 +41,5 @@ class TabOS extends Application {
             listeners.each { property.removeListener it }
         }.clear()
         Configurations.shutdown()
-    }
-}
-
-class Loader {
-    static Parent load(String fxml) {
-        new FXMLLoader(TabOS.getResource(fxml)).load()
     }
 }
