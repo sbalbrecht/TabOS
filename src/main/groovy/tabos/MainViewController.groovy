@@ -1,7 +1,10 @@
 package tabos
 
+import javafx.application.Platform
 import javafx.beans.property.DoubleProperty
 import javafx.beans.property.SimpleDoubleProperty
+import javafx.beans.value.ChangeListener
+import javafx.beans.value.ObservableValue
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.*
@@ -12,6 +15,7 @@ class MainViewController implements Initializable {
     private final AppConfig config = Configurations.get()
     @FXML private MenuBar menuBar
     @FXML private ToolBar toolbar
+    @FXML private SplitPane horizontalSplitPane
     @FXML private TabPane sidebarTabs
     @FXML private TabPane bottomTabs
     @FXML private TreeView<String> projectTree
@@ -20,15 +24,21 @@ class MainViewController implements Initializable {
     @FXML private HBox timeline
     @FXML private HBox mixer
     @FXML private VBox scoreArea
-    private DoubleProperty leftSidebarDividerPositions
+
+    private DoubleProperty leftSidebarDividerPosition
 
     MainViewController() {
-        leftSidebarDividerPositions = new SimpleDoubleProperty(config.ui.sidebars.left)
+        leftSidebarDividerPosition = new SimpleDoubleProperty(Math.clamp(config.ui.sidebars.left, 0, 1.0)).tap {
+            ChangeListener listener = (ObservableValue o, Object oldVal, Object newVal) -> config.ui.sidebars.left = newVal as double
+            addListener listener
+            Main.subscriptions.get(it, []) << listener
+        }
     }
 
     @Override
     void initialize(URL location, ResourceBundle resources) {
         menuBar.useSystemMenuBarProperty().set(true)
+        horizontalSplitPane.dividers[0].positionProperty().bindBidirectional(leftSidebarDividerPosition)
 
         TreeItem<String> root = new TreeItem<>("Project Root")
         root.expanded = true
@@ -78,7 +88,7 @@ class MainViewController implements Initializable {
     }
 
     @FXML private void handleExit() {
-        System.exit(0)
+        Platform.exit()
     }
 
     @FXML private void handleUndo() {
@@ -111,17 +121,5 @@ class MainViewController implements Initializable {
 
     @FXML private void handleRecord() {
         println("Record")
-    }
-
-    double getLeftSidebarDividerPositions() {
-        leftSidebarDividerPositions.get()
-    }
-
-    void setLeftSidebarDividerPositions(double value) {
-        leftSidebarDividerPositions.set(value)
-    }
-
-    DoubleProperty leftSidebarDividerPositionsProperty() {
-        leftSidebarDividerPositions
     }
 }

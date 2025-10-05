@@ -39,10 +39,10 @@
         <SplitPane dividerPositions="0.75" orientation="VERTICAL">
 
             <!-- Top: Horizontal Split (Sidebar | Editor) -->
-            <SplitPane dividerPositions="${controller.leftSidebarDividerPositions}">
+            <SplitPane fx:id="horizontalSplitPane">
 
                 <!-- Sidebar -->
-                <VBox minWidth="25" prefWidth="250">
+                <VBox minWidth="50" prefWidth="250">
                     <TabPane fx:id="sidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
                         <Tab text="Project">
                             <TreeView fx:id="projectTree" />
