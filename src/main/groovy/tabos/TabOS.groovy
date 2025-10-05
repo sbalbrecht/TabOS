@@ -13,11 +13,11 @@ import javafx.scene.Scene
 import javafx.stage.Stage
 
 @Slf4j
-class Main extends Application {
+class TabOS extends Application {
     static Map<Property, List<ChangeListener>> subscriptions = [:]
 
     static void main(String[] args) {
-        launch(Main, args)
+        launch(TabOS, args)
     }
 
     @Override
@@ -37,6 +37,6 @@ class Main extends Application {
 
 class Loader {
     static Parent load(String fxml) {
-        new FXMLLoader(Main.getResource(fxml)).load()
+        new FXMLLoader(TabOS.getResource(fxml)).load()
     }
 }

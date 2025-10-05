@@ -29,9 +29,9 @@ class MainViewController implements Initializable {
 
     MainViewController() {
         leftSidebarDividerPosition = new SimpleDoubleProperty(Math.clamp(config.ui.sidebars.left, 0, 1.0)).tap {
-            ChangeListener listener = (ObservableValue o, Object oldVal, Object newVal) -> config.ui.sidebars.left = newVal as double
+            ChangeListener listener = (ObservableValue o, Object oldVal, Object newVal) -> config.ui.sidebars.left = Math.clamp(newVal as double, 0, 1.0)
             addListener listener
-            Main.subscriptions.get(it, []) << listener
+            TabOS.subscriptions.get(it, []) << listener
         }
     }
 
