@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+
+<Tab xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="tabos.ui.ConsoleTabController" text="Console">
+    <TextArea fx:id="console" editable="false" />
+</Tab>
+

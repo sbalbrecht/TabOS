@@ -56,7 +56,7 @@
             <!-- Bottom Pane -->
             <VBox minHeight="100" prefHeight="200">
                 <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-                    <Tab text="Console" />
+                    <fx:include source="ConsoleTab.fxml"/>
                     <Tab text="Timeline">
                         <ScrollPane>
                             <HBox fx:id="timeline" spacing="5" style="-fx-padding: 10;" />
