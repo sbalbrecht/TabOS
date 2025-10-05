@@ -13,7 +13,7 @@ class Configurations {
     private static final configurationTypes = [int, Integer, long, Long, double, Double, float, Float, boolean, Boolean, short, Short, byte, Byte, List, Map, String, Enum]
     private static final Map<Class, ConfigurationContext> contextsByClass = [:]
     private static ConfigurationContext rootContext
-    static final List observers = []
+    static final List subscriptions = []
     static File storageDir
     static File storageFile
 
@@ -35,7 +35,7 @@ class Configurations {
                 ctx.instance.metaClass.setProperty = { String name, value ->
                     if (ctx.properties.containsKey(name)) {
                         ctx.properties[name].field.set(ctx.instance, value)
-                        observers.each { it() }
+                        subscriptions.each { it() }
                         rootContext?.debouncedSave()
                     } else {
                         ctx.instance.metaClass.setProperty(ctx.instance, name, value)
@@ -91,6 +91,7 @@ class Configurations {
     }
 
     static void shutdown() {
+        subscriptions.clear()
         rootContext?.pendingSave?.cancel(false)
         saveExecutor.shutdown()
         rootContext = null

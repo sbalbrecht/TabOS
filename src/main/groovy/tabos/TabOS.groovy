@@ -1,7 +1,6 @@
 package tabos
 
 import groovy.util.logging.Slf4j
-import javafx.beans.property.Property
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
 import javafx.scene.Parent
@@ -42,6 +41,7 @@ class TabOS extends Application {
         subscriptions.each { property, listeners ->
             listeners.each { property.removeListener it }
         }.clear()
+        Configurations.shutdown()
     }
 }
 

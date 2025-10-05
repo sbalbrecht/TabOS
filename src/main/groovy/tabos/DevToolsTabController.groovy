@@ -15,7 +15,7 @@ class DevToolsTabController implements Initializable {
     @Override
     void initialize(URL location, ResourceBundle resources) {
         settingsProperty = new SimpleStringProperty(JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get())))
-        Configurations.observers.add({ settingsProperty.set(JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get()))) })
+        Configurations.subscriptions.add({ settingsProperty.set(JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get()))) })
         settings.textProperty().bindBidirectional(settingsProperty)
         settings.font = new Font('Consolas', 12)
     }
