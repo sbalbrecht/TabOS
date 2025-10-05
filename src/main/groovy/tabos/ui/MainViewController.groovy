@@ -1,6 +1,5 @@
 package tabos.ui
 
-import javafx.application.Platform
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.*
@@ -11,7 +10,6 @@ import tabos.config.Configurations
 
 class MainViewController implements Initializable {
     private static final AppConfig config = Configurations.get()
-    @FXML private MenuBar menuBar
     @FXML private ToolBar toolbar
     @FXML private SplitPane verticalSplitPane
     @FXML private SplitPane horizontalSplitPane
@@ -26,7 +24,6 @@ class MainViewController implements Initializable {
 
     @Override
     void initialize(URL location, ResourceBundle resources) {
-        menuBar.useSystemMenuBarProperty().set(true)
         horizontalSplitPane.dividers[0].positionProperty().bindBidirectional(BindUtil.prop(config.ui.sidebars, 'left'))
         horizontalSplitPane.dividers[1].positionProperty().bindBidirectional(BindUtil.prop(config.ui.sidebars, 'right'))
         verticalSplitPane.dividers[0].positionProperty().bindBidirectional(BindUtil.prop(config.ui.sidebars, 'bottom'))
@@ -64,42 +61,6 @@ class MainViewController implements Initializable {
 
             scoreArea.children.add(staff)
         }
-    }
-
-    @FXML private void handleNew() {
-        println("New file")
-    }
-
-    @FXML private void handleOpen() {
-        println("Open file")
-    }
-
-    @FXML private void handleSave() {
-        println("Save file")
-    }
-
-    @FXML private void handleExit() {
-        Platform.exit()
-    }
-
-    @FXML private void handleUndo() {
-        println("Undo")
-    }
-
-    @FXML private void handleRedo() {
-        println("Redo")
-    }
-
-    @FXML private void handleCut() {
-        println("Cut")
-    }
-
-    @FXML private void handleCopy() {
-        println("Copy")
-    }
-
-    @FXML private void handlePaste() {
-        println("Paste")
     }
 
     @FXML private void handlePlay() {

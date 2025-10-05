@@ -7,25 +7,7 @@
     <!-- Menu Bar -->
     <top>
         <VBox>
-            <MenuBar fx:id="menuBar">
-                <Menu text="File">
-                    <MenuItem onAction="#handleNew" text="New" />
-                    <MenuItem onAction="#handleOpen" text="Open" />
-                    <MenuItem onAction="#handleSave" text="Save" />
-                    <SeparatorMenuItem />
-                    <MenuItem onAction="#handleExit" text="Exit" />
-                </Menu>
-                <Menu text="Edit">
-                    <MenuItem onAction="#handleUndo" text="Undo" />
-                    <MenuItem onAction="#handleRedo" text="Redo" />
-                    <SeparatorMenuItem />
-                    <MenuItem onAction="#handleCut" text="Cut" />
-                    <MenuItem onAction="#handleCopy" text="Copy" />
-                    <MenuItem onAction="#handlePaste" text="Paste" />
-                </Menu>
-            </MenuBar>
-
-            <!-- Toolbar -->
+            <fx:include source="Menu.fxml" />
             <ToolBar fx:id="toolbar">
                 <Button onAction="#handlePlay" text="Play" />
                 <Button onAction="#handleStop" text="Stop" />
