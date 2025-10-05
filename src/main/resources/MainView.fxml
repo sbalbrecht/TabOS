@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="tabos.MainViewController">
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="tabos.MainViewController">
     <!-- Menu Bar -->
     <top>
         <VBox>
@@ -36,7 +36,7 @@
 
     <!-- Main Content Area with Split Panes -->
     <center>
-        <SplitPane dividerPositions="0.75" orientation="VERTICAL">
+        <SplitPane fx:id="verticalSplitPane" orientation="VERTICAL">
 
             <!-- Top: Horizontal Split (Sidebar | Editor) -->
             <SplitPane fx:id="horizontalSplitPane">
@@ -62,6 +62,13 @@
                         <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;" />
                     </ScrollPane>
                 </StackPane>
+
+                <!-- Right Sidebar -->
+                <VBox minWidth="50" prefWidth="250">
+                    <TabPane side="RIGHT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                        <fx:include source="DevToolsTab.fxml"/>
+                    </TabPane>
+                </VBox>
 
             </SplitPane>
 

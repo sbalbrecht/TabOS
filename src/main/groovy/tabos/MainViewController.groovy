@@ -1,10 +1,6 @@
 package tabos
 
 import javafx.application.Platform
-import javafx.beans.property.DoubleProperty
-import javafx.beans.property.SimpleDoubleProperty
-import javafx.beans.value.ChangeListener
-import javafx.beans.value.ObservableValue
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.*
@@ -12,9 +8,10 @@ import javafx.scene.layout.*
 import javafx.geometry.Orientation
 
 class MainViewController implements Initializable {
-    private final AppConfig config = Configurations.get()
+    private static final AppConfig config = Configurations.get()
     @FXML private MenuBar menuBar
     @FXML private ToolBar toolbar
+    @FXML private SplitPane verticalSplitPane
     @FXML private SplitPane horizontalSplitPane
     @FXML private TabPane sidebarTabs
     @FXML private TabPane bottomTabs
@@ -25,20 +22,12 @@ class MainViewController implements Initializable {
     @FXML private HBox mixer
     @FXML private VBox scoreArea
 
-    private DoubleProperty leftSidebarDividerPosition
-
-    MainViewController() {
-        leftSidebarDividerPosition = new SimpleDoubleProperty(Math.clamp(config.ui.sidebars.left, 0, 1.0)).tap {
-            ChangeListener listener = (ObservableValue o, Object oldVal, Object newVal) -> config.ui.sidebars.left = Math.clamp(newVal as double, 0, 1.0)
-            addListener listener
-            TabOS.subscriptions.get(it, []) << listener
-        }
-    }
-
     @Override
     void initialize(URL location, ResourceBundle resources) {
         menuBar.useSystemMenuBarProperty().set(true)
-        horizontalSplitPane.dividers[0].positionProperty().bindBidirectional(leftSidebarDividerPosition)
+        horizontalSplitPane.dividers[0].positionProperty().bindBidirectional(BindUtil.prop(config.ui.sidebars, 'left'))
+        horizontalSplitPane.dividers[1].positionProperty().bindBidirectional(BindUtil.prop(config.ui.sidebars, 'right'))
+        verticalSplitPane.dividers[0].positionProperty().bindBidirectional(BindUtil.prop(config.ui.sidebars, 'bottom'))
 
         TreeItem<String> root = new TreeItem<>("Project Root")
         root.expanded = true

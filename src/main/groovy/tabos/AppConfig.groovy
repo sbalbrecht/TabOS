@@ -28,8 +28,8 @@ package tabos
 
 @Config class UiSidebarsConfig {
     double left = 0.2
-    int right = 300
-    int bottom = 200
+    double right = 0.2
+    double bottom = 0.75
 }
 
 @Config class ProjectConfig {

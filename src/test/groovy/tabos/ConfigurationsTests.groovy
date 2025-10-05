@@ -1,6 +1,5 @@
 package tabos
 
-import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -21,7 +20,7 @@ class ConfigurationsTests {
         config.ui.window.width = 1920
         config.ui.window.height = 1080
         config.ui.window.maximized = true
-        config.ui.sidebars.left = 350
+        config.ui.sidebars.left = 0.45
         config.preferences.theme = 'dark'
         config.project.recentFiles = [
             '/home/user/symphony.mxml',
