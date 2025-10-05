@@ -11,6 +11,7 @@ import tabos.config.Configurations
 class MainViewController implements Initializable {
     private static final AppConfig config = Configurations.get()
     @FXML private ToolBar toolbar
+    @FXML private TabPane editorTabPane
     @FXML private SplitPane verticalSplitPane
     @FXML private SplitPane horizontalSplitPane
     @FXML private TabPane sidebarTabs

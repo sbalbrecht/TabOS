@@ -36,11 +36,13 @@
                 </VBox>
 
                 <!-- Main Editor -->
-                <StackPane>
-                    <ScrollPane fitToWidth="true">
-                        <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;" />
-                    </ScrollPane>
-                </StackPane>
+                <TabPane tabClosingPolicy="ALL_TABS" fx:id="editorTabPane">
+                    <Tab text="untitled">
+                        <ScrollPane fitToWidth="true">
+                            <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;" />
+                        </ScrollPane>
+                    </Tab>
+                </TabPane>
 
                 <!-- Right Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
