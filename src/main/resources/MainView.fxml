@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane fx:controller="tabos.MainViewController" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="tabos.MainViewController">
     <!-- Menu Bar -->
     <top>
         <VBox>
@@ -39,10 +39,10 @@
         <SplitPane dividerPositions="0.75" orientation="VERTICAL">
 
             <!-- Top: Horizontal Split (Sidebar | Editor) -->
-            <SplitPane dividerPositions="0.2">
+            <SplitPane dividerPositions="${controller.leftSidebarDividerPositions}">
 
                 <!-- Sidebar -->
-                <VBox minWidth="150" prefWidth="250">
+                <VBox minWidth="25" prefWidth="250">
                     <TabPane fx:id="sidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
                         <Tab text="Project">
                             <TreeView fx:id="projectTree" />
@@ -68,7 +68,7 @@
             <!-- Bottom Pane -->
             <VBox minHeight="100" prefHeight="200">
                 <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-                    <Tab text="Console"/>
+                    <Tab text="Console" />
                     <Tab text="Timeline">
                         <ScrollPane>
                             <HBox fx:id="timeline" spacing="5" style="-fx-padding: 10;" />

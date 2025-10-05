@@ -16,7 +16,7 @@ class Configurations {
     static File storageDir
     static File storageFile
 
-    static <T> T get(Class<T> configClass) {
+    static <T> T get(Class<T> configClass = AppConfig) {
         if (contextsByClass.isEmpty()) init()
         contextsByClass[configClass].instance as T
     }

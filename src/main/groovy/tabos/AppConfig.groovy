@@ -27,25 +27,23 @@ package tabos
 }
 
 @Config class UiSidebarsConfig {
-    int left = 250
+    double left = 0.2
     int right = 300
     int bottom = 200
 }
 
 @Config class ProjectConfig {
     List<String> recentFiles = []
-    int maxRecentFiles = 10
 }
 
-@Config class OpenScoreConfig {
-    String path = ""
+@Config class ScoreConfig {
     int scrollPosition = 0
     double zoomLevel = 1.0
 }
 
 @Config class PreferencesConfig {
     boolean autosave = true
-    int autosaveInterval = 300
+    int autosaveInterval = 1000 * 10
     String theme = "light"
     String language = "en"
 }

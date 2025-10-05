@@ -1,5 +1,7 @@
 package tabos
 
+import javafx.beans.property.DoubleProperty
+import javafx.beans.property.SimpleDoubleProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.*
@@ -7,6 +9,7 @@ import javafx.scene.layout.*
 import javafx.geometry.Orientation
 
 class MainViewController implements Initializable {
+    private final AppConfig config = Configurations.get()
     @FXML private MenuBar menuBar
     @FXML private ToolBar toolbar
     @FXML private TabPane sidebarTabs
@@ -17,6 +20,11 @@ class MainViewController implements Initializable {
     @FXML private HBox timeline
     @FXML private HBox mixer
     @FXML private VBox scoreArea
+    private DoubleProperty leftSidebarDividerPositions
+
+    MainViewController() {
+        leftSidebarDividerPositions = new SimpleDoubleProperty(config.ui.sidebars.left)
+    }
 
     @Override
     void initialize(URL location, ResourceBundle resources) {
@@ -103,5 +111,17 @@ class MainViewController implements Initializable {
 
     @FXML private void handleRecord() {
         println("Record")
+    }
+
+    double getLeftSidebarDividerPositions() {
+        leftSidebarDividerPositions.get()
+    }
+
+    void setLeftSidebarDividerPositions(double value) {
+        leftSidebarDividerPositions.set(value)
+    }
+
+    DoubleProperty leftSidebarDividerPositionsProperty() {
+        leftSidebarDividerPositions
     }
 }
