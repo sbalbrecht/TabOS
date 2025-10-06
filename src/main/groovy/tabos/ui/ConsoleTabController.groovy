@@ -17,8 +17,8 @@ class ConsoleTabController implements Initializable {
 
     @Override
     void initialize(URL url, ResourceBundle resourceBundle) {
-        console.setFont(new Font('Consolas', 12))
-        Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)
+        console.setFont(Font.font('monospace', 13))
+        Logger rootLogger = LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as Logger
         rootLogger.addAppender(new TextAreaAppender(console).tap {
             start()
         })
@@ -30,7 +30,7 @@ class TextAreaAppender extends OutputStreamAppender<ILoggingEvent> {
         Context lc = LoggerFactory.getILoggerFactory() as Context
         setContext(lc)
         encoder = new PatternLayoutEncoder().tap {
-            pattern = "%date %-5level [%thread] %logger{10} %msg%n"
+            pattern = "%date %-5level [%thread] %logger{20} -- %msg%n"
             setContext lc
             start()
         }

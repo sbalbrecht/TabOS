@@ -1,23 +1,31 @@
 package tabos.ui
 
 import groovy.json.JsonOutput
+import groovy.util.logging.Slf4j
 import javafx.beans.property.SimpleStringProperty
-import javafx.beans.property.StringProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.control.TextArea
+import javafx.scene.control.TreeView
+import javafx.scene.input.MouseEvent
 import javafx.scene.text.Font
-import javafx.scene.text.Text
 import tabos.config.Configurations
 
+@Slf4j
 class DevToolsTabController implements Initializable {
-    @FXML private Text settings
-    private StringProperty settingsProperty
+    @FXML private TextArea settings
+    @FXML private TreeView elementsTree
+    private boolean elementSelectorEnabled = false
 
     @Override
     void initialize(URL location, ResourceBundle resources) {
-        settingsProperty = new SimpleStringProperty(JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get())))
-        Configurations.subscriptions.add({ settingsProperty.set(JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get()))) })
-        settings.textProperty().bindBidirectional(settingsProperty)
-        settings.font = new Font('Consolas', 12)
+        settings.setFont Font.font(Constants.FONT_MONOSPACE, 12)
+        settings.setText JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get()))
+        Configurations.subscriptions.add({ settings.setText JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get())) })
+    }
+
+    void toggleElementSelector(MouseEvent event) {
+        elementSelectorEnabled = !elementSelectorEnabled
+        log.info "Element selector enabled = $elementSelectorEnabled"
     }
 }

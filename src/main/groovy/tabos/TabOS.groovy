@@ -1,5 +1,7 @@
 package tabos
 
+import com.tangorabox.componentinspector.fx.FXComponentInspectorHandler
+
 import static tabos.io.Loader.load
 
 import groovy.util.logging.Slf4j
@@ -33,6 +35,7 @@ class TabOS extends Application {
             subscriptions.get(heightProperty(), []) << widthListener
         }
         stage.show()
+        FXComponentInspectorHandler.handleAll() // todo if devtools enabled
     }
 
     @Override

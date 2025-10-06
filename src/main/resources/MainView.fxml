@@ -18,8 +18,8 @@
 
     <!-- Main Content Area with Split Panes -->
     <center>
-        <SplitPane fx:id="verticalSplitPane" orientation="VERTICAL">
-            <SplitPane fx:id="horizontalSplitPane">
+        <SplitPane fx:id="verticalSplitPane" dividerPositions="0.5" orientation="VERTICAL">
+            <SplitPane fx:id="horizontalSplitPane" dividerPositions="0.5, 0.5">
                 <!-- Left Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
                     <TabPane fx:id="sidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
@@ -36,7 +36,7 @@
                 </VBox>
 
                 <!-- Main Editor -->
-                <TabPane tabClosingPolicy="ALL_TABS" fx:id="editorTabPane">
+                <TabPane fx:id="editorTabPane" nodeOrientation="RIGHT_TO_LEFT" tabClosingPolicy="ALL_TABS">
                     <Tab text="untitled">
                         <ScrollPane fitToWidth="true">
                             <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;" />
@@ -56,7 +56,7 @@
             <!-- Bottom Pane -->
             <VBox minHeight="100" prefHeight="200">
                 <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-                    <fx:include source="ConsoleTab.fxml"/>
+                    <fx:include source="ConsoleTab.fxml" />
                     <Tab text="Timeline">
                         <ScrollPane>
                             <HBox fx:id="timeline" spacing="5" style="-fx-padding: 10;" />
