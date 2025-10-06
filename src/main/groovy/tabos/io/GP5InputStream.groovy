@@ -45,7 +45,7 @@ import tabos.RSEMasterEffect
 import tabos.SemiHarmonic
 import tabos.SlapEffect
 import tabos.SlideType
-import tabos.Song
+import tabos.Score
 import tabos.TappedHarmonic
 import tabos.TimeSignature
 import tabos.Track
@@ -73,24 +73,24 @@ class GP5InputStream extends FilterInputStream {
 
     GP5InputStream(InputStream stream) { super(stream) }
 
-    Song readSong() {
-        final Song song = new Song()
+    Score readScore() {
+        final Score score = new Score()
 
-        song.version = readFixedLengthStringField 30
-        final Tuple version = VERSIONS[song.version]
+        score.version = readFixedLengthStringField 30
+        final Tuple version = VERSIONS[score.version]
 
         // todo if isClipboard copyClipboard?
-        song.title = readFixedLengthStringField()
-        song.subtitle = readFixedLengthStringField()
-        song.artist = readFixedLengthStringField()
-        song.album = readFixedLengthStringField()
-        song.wordsAuthor = readFixedLengthStringField()
-        song.musicAuthor = readFixedLengthStringField()
-        song.copyright = readFixedLengthStringField()
-        song.tabAuthor = readFixedLengthStringField()
-        song.instructions = readFixedLengthStringField()
-        song.notice = (0..<readInt()).collect { readFixedLengthStringField() }
-        song.lyrics = new Lyrics(
+        score.title = readFixedLengthStringField()
+        score.subtitle = readFixedLengthStringField()
+        score.artist = readFixedLengthStringField()
+        score.album = readFixedLengthStringField()
+        score.wordsAuthor = readFixedLengthStringField()
+        score.musicAuthor = readFixedLengthStringField()
+        score.copyright = readFixedLengthStringField()
+        score.tabAuthor = readFixedLengthStringField()
+        score.instructions = readFixedLengthStringField()
+        score.notice = (0..<readInt()).collect { readFixedLengthStringField() }
+        score.lyrics = new Lyrics(
             lyricTrackIndex: readInt(),
             lines: (0..<Lyrics.MAX_LINES).collect { new LyricLine(
                 startingMeasure: readInt(),
@@ -98,7 +98,7 @@ class GP5InputStream extends FilterInputStream {
             )}
         )
 
-        song.rseMasterEffect = version > v(5, 0, 0) ? new RSEMasterEffect(
+        score.rseMasterEffect = version > v(5, 0, 0) ? new RSEMasterEffect(
             volume: readInt().tap {
                 readInt() // unknown
             },
@@ -108,7 +108,7 @@ class GP5InputStream extends FilterInputStream {
             )
         ) : null
 
-        song.pageSetup = new PageSetup().tap {
+        score.pageSetup = new PageSetup().tap {
             dimensions.width = readInt()
             dimensions.height = readInt()
             margin.left = readInt()
@@ -129,10 +129,10 @@ class GP5InputStream extends FilterInputStream {
             copyright2 = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x080))
             pageNumber = new HeaderElement(readFixedLengthStringField(), bool(templateFlags & 0x100))
         }
-        song.tempoName = readFixedLengthStringField()
-        song.tempo = readInt()
-        song.hideTempo = version > v(5, 0, 0) ? readBoolean() : false
-        song.key = KeySignature.from(read(), 0)
+        score.tempoName = readFixedLengthStringField()
+        score.tempo = readInt()
+        score.hideTempo = version > v(5, 0, 0) ? readBoolean() : false
+        score.key = KeySignature.from(read(), 0)
 
         readInt() // unused "octave"?
 
@@ -155,7 +155,7 @@ class GP5InputStream extends FilterInputStream {
             }
         }
 
-        song.directions = [
+        score.directions = [
             signs: [
                 'Coda': readShort(),
                 'Double Coda': readShort(),
@@ -181,20 +181,20 @@ class GP5InputStream extends FilterInputStream {
             ]
         ]
 
-        final Map signsByMeasure = song.directions.signs.groupBy { it.value }
-        final Map fromSignsByMeasure = song.directions.fromSigns.groupBy { it.value }
+        final Map signsByMeasure = score.directions.signs.groupBy { it.value }
+        final Map fromSignsByMeasure = score.directions.fromSigns.groupBy { it.value }
 
         int rseMasterEffectReverb = readInt()
-        song.rseMasterEffect?.reverb = rseMasterEffectReverb
+        score.rseMasterEffect?.reverb = rseMasterEffectReverb
 
         final int numMeasures = readInt()
         final int numTracks = readInt()
 
         for (int i = 0; i < numMeasures; i++) {
             if (i > 0) skipBytes 1
-            song.addMeasureHeader new MeasureHeader().tap { measureHeader ->
-                MeasureHeader prevHeader = (i == 0) ? null : song.measureHeaders[i - 1]
-                measureHeader.song = song
+            score.addMeasureHeader new MeasureHeader().tap { measureHeader ->
+                MeasureHeader prevHeader = (i == 0) ? null : score.measureHeaders[i - 1]
+                measureHeader.song = score
                 final int flags = readUnsignedByte()
                 number = i + 1
                 isRepeatOpen = bool(flags & 0x04)
@@ -228,8 +228,8 @@ class GP5InputStream extends FilterInputStream {
 
         if (version == v(5, 0, 0) || numTracks > 0) skipBytes 1
 
-        song.tracks = (0..<numTracks).collect { trackIdx ->
-            new Track(song).tap { track ->
+        score.tracks = (0..<numTracks).collect { trackIdx ->
+            new Track(score).tap { track ->
                 int flags = readUnsignedByte()
                 number = trackIdx + 1
                 isPercussionTrack = bool(flags & 0x01)
@@ -302,8 +302,8 @@ class GP5InputStream extends FilterInputStream {
         skipBytes(version > v(5, 0, 0) ? 1 : 2)
 
         // read measures
-        for (def header : song.measureHeaders) {
-            for (def track : song.tracks) {
+        for (def header : score.measureHeaders) {
+            for (def track : score.tracks) {
                 Measure measure = new Measure(track, header)
                 track.measures << measure
                 int start = header.start
@@ -576,7 +576,7 @@ class GP5InputStream extends FilterInputStream {
             }
         }
 
-        song
+        score
     }
 
     private int readNoteValue(Note note) {

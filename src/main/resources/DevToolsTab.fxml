@@ -6,7 +6,7 @@
 
 <Tab xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="tabos.ui.DevToolsTabController" text="DevTools">
     <AnchorPane>
-        <TabPane tabClosingPolicy="UNAVAILABLE" AnchorPane.topAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+        <TabPane tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" AnchorPane.topAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.bottomAnchor="0.0">
             <Tab text="User Settings">
                 <TextArea fx:id="settings" editable="false" />
             </Tab>

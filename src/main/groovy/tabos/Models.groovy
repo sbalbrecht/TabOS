@@ -4,7 +4,7 @@ import groovy.transform.AutoClone
 import groovy.transform.TupleConstructor
 
 /*
-Song
+Score
   Tracks
     Measures
       Voices
@@ -12,7 +12,7 @@ Song
           Notes
  */
 
-class Song {
+class Score {
     String version
     // todo clipboard?
     String title
@@ -186,7 +186,7 @@ record Color(int r, int g, int b) {
 
 @TupleConstructor
 class Track {
-    Song song
+    Score score
     int number = 1
     int fretCount = 24
     int offset = 0
@@ -452,7 +452,7 @@ class Marker {
 
 @TupleConstructor
 class MeasureHeader {
-    Song song
+    Score song
     RepeatGroup repeatGroup
     int number
     int start

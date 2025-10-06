@@ -22,7 +22,7 @@
             <SplitPane fx:id="horizontalSplitPane" dividerPositions="0.5, 0.5">
                 <!-- Left Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
-                    <TabPane fx:id="sidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                    <TabPane fx:id="sidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
                         <Tab text="Project">
                             <TreeView fx:id="projectTree" />
                         </Tab>
@@ -36,7 +36,7 @@
                 </VBox>
 
                 <!-- Main Editor -->
-                <TabPane fx:id="editorTabPane" nodeOrientation="RIGHT_TO_LEFT" tabClosingPolicy="ALL_TABS">
+                <TabPane fx:id="editorTabPane" tabClosingPolicy="ALL_TABS" tabDragPolicy="REORDER">
                     <Tab text="untitled">
                         <ScrollPane fitToWidth="true">
                             <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;" />
@@ -46,7 +46,7 @@
 
                 <!-- Right Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
-                    <TabPane side="RIGHT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                    <TabPane side="RIGHT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
                         <fx:include source="DevToolsTab.fxml" />
                     </TabPane>
                 </VBox>
@@ -55,7 +55,7 @@
 
             <!-- Bottom Pane -->
             <VBox minHeight="100" prefHeight="200">
-                <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
                     <fx:include source="ConsoleTab.fxml" />
                     <Tab text="Timeline">
                         <ScrollPane>
