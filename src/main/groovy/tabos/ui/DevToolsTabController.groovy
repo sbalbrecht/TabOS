@@ -24,7 +24,7 @@ class DevToolsTabController implements Initializable {
         Configurations.subscriptions.add({ settings.setText JsonOutput.prettyPrint(JsonOutput.toJson(Configurations.get())) })
     }
 
-    void toggleElementSelector(MouseEvent event) {
+    void toggleElementSelector() {
         elementSelectorEnabled = !elementSelectorEnabled
         log.info "Element selector enabled = $elementSelectorEnabled"
     }

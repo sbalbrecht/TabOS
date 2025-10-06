@@ -27,7 +27,7 @@
 
                 <!-- Right Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
-                    <TabPane side="RIGHT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
+                    <TabPane fx:id="rightSidebarTabs" side="RIGHT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
                         <fx:include source="DevToolsTab.fxml" />
                     </TabPane>
                 </VBox>

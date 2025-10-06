@@ -15,6 +15,7 @@ class MainViewController implements Initializable {
     @FXML private SplitPane verticalSplitPane
     @FXML private SplitPane horizontalSplitPane
     @FXML private TabPane leftSidebarTabs
+    @FXML private TabPane rightSidebarTabs
     @FXML private TabPane bottomTabs
 
     @Override

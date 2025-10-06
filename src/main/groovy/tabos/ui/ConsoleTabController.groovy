@@ -28,10 +28,10 @@ class ConsoleTabController implements Initializable {
 class TextAreaAppender extends OutputStreamAppender<ILoggingEvent> {
     TextAreaAppender(TextArea textArea) {
         Context lc = LoggerFactory.getILoggerFactory() as Context
-        setContext(lc)
+        context = lc
         encoder = new PatternLayoutEncoder().tap {
-            pattern = "%date %-5level [%thread] %logger{20} -- %msg%n"
-            setContext lc
+            pattern = "%d{HH:mm:ss.SSS} [%-5level] %msg%n"
+            context = lc
             start()
         }
         outputStream = new TextAreaOutputStream(textArea)
@@ -43,10 +43,10 @@ class TextAreaOutputStream extends OutputStream {
 
     TextAreaOutputStream(TextArea textArea) { this.textArea = textArea }
 
-    @Override void write(int b) throws IOException { super.write(b) }
-
     @Override
     void write(byte[] bytes) throws IOException {
         Platform.runLater(() -> textArea.appendText(new String(bytes)))
     }
+
+    @Override void write(int b) throws IOException { super.write(b) }
 }
