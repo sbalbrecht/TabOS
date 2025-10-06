@@ -9,9 +9,6 @@
         <VBox>
             <fx:include source="Menu.fxml" />
             <ToolBar fx:id="toolbar">
-                <Button onAction="#handlePlay" text="Play" />
-                <Button onAction="#handleStop" text="Stop" />
-                <Button onAction="#handleRecord" text="Record" />
             </ToolBar>
         </VBox>
     </top>
@@ -22,27 +19,11 @@
             <SplitPane fx:id="horizontalSplitPane" dividerPositions="0.5, 0.5">
                 <!-- Left Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
-                    <TabPane fx:id="sidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
-                        <Tab text="Project">
-                            <TreeView fx:id="projectTree" />
-                        </Tab>
-                        <Tab text="Properties">
-                            <VBox fx:id="propertiesBox" spacing="10" style="-fx-padding: 10;" />
-                        </Tab>
-                        <Tab text="Instruments">
-                            <ListView fx:id="instrumentList" />
-                        </Tab>
-                    </TabPane>
+                    <TabPane fx:id="leftSidebarTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS" />
                 </VBox>
 
-                <!-- Main Editor -->
-                <TabPane fx:id="editorTabPane" tabClosingPolicy="ALL_TABS" tabDragPolicy="REORDER">
-                    <Tab text="untitled">
-                        <ScrollPane fitToWidth="true">
-                            <VBox fx:id="scoreArea" spacing="20" style="-fx-padding: 20; -fx-background-color: white;" />
-                        </ScrollPane>
-                    </Tab>
-                </TabPane>
+                <!-- Score Editor -->
+                <TabPane fx:id="editorTabPane" tabClosingPolicy="ALL_TABS" tabDragPolicy="REORDER" />
 
                 <!-- Right Sidebar -->
                 <VBox minWidth="50" prefWidth="250">
@@ -57,14 +38,6 @@
             <VBox minHeight="100" prefHeight="200">
                 <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
                     <fx:include source="ConsoleTab.fxml" />
-                    <Tab text="Timeline">
-                        <ScrollPane>
-                            <HBox fx:id="timeline" spacing="5" style="-fx-padding: 10;" />
-                        </ScrollPane>
-                    </Tab>
-                    <Tab text="Mixer">
-                        <HBox fx:id="mixer" spacing="10" style="-fx-padding: 10;" />
-                    </Tab>
                 </TabPane>
             </VBox>
         </SplitPane>
