@@ -14,7 +14,6 @@ import tabos.config.Configurations
 @Slf4j
 class DevToolsTabController implements Initializable {
     @FXML private TextArea settings
-    @FXML private TreeView elementsTree
     private boolean elementSelectorEnabled = false
 
     @Override

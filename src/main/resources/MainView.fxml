@@ -37,7 +37,7 @@
             <!-- Bottom Pane -->
             <VBox minHeight="100" prefHeight="200">
                 <TabPane fx:id="bottomTabs" side="LEFT" tabClosingPolicy="UNAVAILABLE" tabDragPolicy="REORDER" VBox.vgrow="ALWAYS">
-                    <fx:include source="ConsoleTab.fxml" />
+
                 </TabPane>
             </VBox>
         </SplitPane>
